@@ -5,6 +5,7 @@
 
 #include "platform/platform_display.hpp"
 #include "platform/font5x7.hpp"
+#include "platform/platform_backlight.hpp"
 
 #include <errno.h>
 
@@ -128,6 +129,12 @@ public:
 	 * @return 0 成功；负值失败。
 	 */
 	int show_boot_screen() noexcept override;
+
+	/**
+	 * @brief 获取显示关联的背光控制接口。
+	 * @return IBacklight 引用。
+	 */
+	platform::IBacklight &backlight() noexcept override;
 
 private:
 	/**
@@ -572,6 +579,15 @@ int ZephyrDisplay::show_boot_screen() noexcept
 	}
 
 	return 0;
+}
+
+/**
+ * @brief 获取显示关联的背光控制接口。
+ * @return IBacklight 引用。
+ */
+platform::IBacklight &ZephyrDisplay::backlight() noexcept
+{
+	return platform::backlight();
 }
 } // namespace
 

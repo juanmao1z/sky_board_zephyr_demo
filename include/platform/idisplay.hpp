@@ -5,6 +5,8 @@
 
 #pragma once
 
+#include "platform/ibacklight.hpp"
+
 #include <cstdint>
 
 namespace platform {
@@ -112,6 +114,12 @@ public:
 	 * @return 0 表示成功；负值表示绘制失败。
 	 */
 	virtual int show_boot_screen() noexcept = 0;
+
+	/**
+	 * @brief 获取显示关联的背光控制接口。
+	 * @return IBacklight 引用。
+	 */
+	virtual IBacklight &backlight() noexcept = 0;
 };
 
 } // namespace platform

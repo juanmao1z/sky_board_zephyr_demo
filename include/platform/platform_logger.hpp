@@ -15,4 +15,10 @@ namespace platform {
  */
 ILogger &logger();
 
+/**
+ * @brief 将日志时间戳源切换为 RTC 时分秒。
+ * @return 0 表示切换成功；负值表示失败。
+ */
+int logger_enable_rtc_timestamp();
+
 } // namespace platform

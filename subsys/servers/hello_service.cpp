@@ -32,7 +32,7 @@ void HelloService::threadEntry(void *p1, void *, void *)
 
 /**
  * @brief 服务线程主循环。
- * @note 每 5 秒输出一次心跳日志并翻转一次 led0。
+ * @note 每 10 秒输出一次心跳日志并翻转一次 led0。
  */
 void HelloService::threads() noexcept
 {
@@ -68,7 +68,7 @@ void HelloService::threads() noexcept
 		}
 
 		log_.info("heartbeat: system alive");
-		k_sleep(K_SECONDS(5));
+		k_sleep(K_SECONDS(10));
 	}
 
 	/* 退出前把 LED 拉低，避免服务停止后维持未知状态。 */

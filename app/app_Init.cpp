@@ -5,11 +5,12 @@
 
 #include "app/app_Init.hpp"
 
-#include "platform/platform_backlight.hpp"
 #include "platform/platform_display.hpp"
 #include "platform/platform_ethernet.hpp"
 #include "platform/platform_logger.hpp"
 #include "servers/hello_service.hpp"
+#include "servers/time_service.hpp"
+#include "servers/tcp_service.hpp"
 
 namespace app {
 
@@ -26,13 +27,11 @@ int app_Init() noexcept
 		platform::logger().error("failed to init display", ret);
 		return ret;
 	}
-
-	ret = platform::backlight().set_brightness(100U);
+	ret = display.backlight().set_brightness(100U);
 	if (ret < 0) {
 		platform::logger().error("failed to set backlight brightness", ret);
 		return ret;
 	}
-
 	ret = display.show_boot_screen();
 	if (ret < 0) {
 		platform::logger().error("failed to draw display boot screen", ret);
@@ -47,7 +46,27 @@ int app_Init() noexcept
 		return ret;
 	}
 
-	static servers::HelloService service(platform::logger());
-	return service.run();
+	static servers::HelloService hello_service(platform::logger());
+	ret = hello_service.run();
+	if (ret < 0) {
+		platform::logger().error("failed to start hello service", ret);
+		return ret;
+	}
+
+	static servers::TcpService tcp_service(platform::logger());
+	ret = tcp_service.run();
+	if (ret < 0) {
+		platform::logger().error("failed to start tcp service", ret);
+		return ret;
+	}
+
+	static servers::TimeService time_service(platform::logger());
+	ret = time_service.run();
+	if (ret < 0) {
+		platform::logger().error("failed to start time service", ret);
+		return ret;
+	}
+
+	return 0;
 }
 } // namespace app
