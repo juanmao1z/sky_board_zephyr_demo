@@ -1,0 +1,6 @@
+board:
+  name: lckfb_sky_board_stm32f407
+  full_name: lckfb_sky_board_stm32f407
+  vendor: st
+  socs:
+    - name: stm32f407xx

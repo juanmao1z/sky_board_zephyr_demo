@@ -1,0 +1,244 @@
+/*
+ * Copyright (c) 2017 Linaro Limited
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/dts-v1/;
+#include <st/f4/stm32f407Xg.dtsi>
+#include <st/f4/stm32f407v(e-g)tx-pinctrl.dtsi>
+#include <zephyr/dt-bindings/gpio/gpio.h>
+#include <zephyr/dt-bindings/input/input-event-codes.h>
+#include <zephyr/dt-bindings/mipi_dbi/mipi_dbi.h>
+#include <zephyr/dt-bindings/pwm/pwm.h>
+
+/ {
+	model = "lckfb_sky_board_stm32f407";
+	compatible = "lckfb,sky_board_stm32f407";
+
+	chosen {
+		zephyr,console = &usart1;
+		zephyr,shell-uart = &usart1;
+		zephyr,sram = &sram0;
+		zephyr,flash = &flash0;
+		zephyr,dtcm = &ccm0;
+		zephyr,display = &st7789v_lcd;
+	};
+
+	leds {
+		compatible = "gpio-leds";
+		user_led0: led_0 {
+			gpios = <&gpiob 2 GPIO_ACTIVE_HIGH>;
+			label = "User LED0";
+		};
+	};
+
+	gpio_keys {
+		compatible = "gpio-keys";
+		key1: button_1 {
+			label = "KEY1";
+			gpios = <&gpioa 0 GPIO_ACTIVE_HIGH>;
+			zephyr,code = <INPUT_KEY_0>;
+		};
+
+		key2: button_2 {
+			label = "KEY2";
+			gpios = <&gpioe 8 GPIO_ACTIVE_HIGH>;
+			zephyr,code = <INPUT_KEY_1>;
+		};
+
+		key3: button_3 {
+			label = "KEY3";
+			gpios = <&gpioc 13 GPIO_ACTIVE_HIGH>;
+			zephyr,code = <INPUT_KEY_2>;
+		};
+	};
+
+	lcd_backlight: lcd_backlight {
+		compatible = "pwm-leds";
+		backlight_pwm: backlight_pwm {
+			/* PB8 is active-low for backlight enable on this board. */
+			pwms = <&pwm10 1 PWM_USEC(100) PWM_POLARITY_INVERTED>;
+			label = "LCD Backlight PWM";
+		};
+	};
+
+	mipi_dbi {
+		compatible = "zephyr,mipi-dbi-spi";
+		spi-dev = <&spi1>;
+		dc-gpios = <&gpiod 14 GPIO_ACTIVE_HIGH>;
+		reset-gpios = <&gpioe 1 GPIO_ACTIVE_LOW>;
+		write-only;
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		st7789v_lcd: st7789v@0 {
+			compatible = "sitronix,st7789v";
+			reg = <0>;
+			mipi-max-frequency = <20000000>;
+			mipi-mode = "MIPI_DBI_MODE_SPI_4WIRE";
+			width = <240>;
+			height = <320>;
+			x-offset = <0>;
+			y-offset = <0>;
+			vcom = <0x19>;
+			gctrl = <0x35>;
+			vrhs = <0x12>;
+			vdvs = <0x20>;
+			mdac = <0x00>;
+			gamma = <0x01>;
+			colmod = <0x05>;
+			lcm = <0x2c>;
+			porch-param = [0c 0c 00 33 33];
+			cmd2en-param = [5a 69 02 01];
+			pwctrl1-param = [a4 a1];
+			pvgam-param = [d0 04 0d 11 13 2b 3f 54 4c 18 0d 0b 1f 23];
+			nvgam-param = [d0 04 0c 11 13 2c 3f 44 51 2f 1f 1f 20 23];
+			ram-param = [00 f0];
+			rgb-param = [cd 08 14];
+		};
+	};
+
+	touch_i2c: touch_i2c {
+		compatible = "gpio-i2c";
+		status = "okay";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		clock-frequency = <100000>;
+		scl-gpios = <&gpiod 10 (GPIO_OPEN_DRAIN | GPIO_PULL_UP)>;
+		sda-gpios = <&gpioe 13 (GPIO_OPEN_DRAIN | GPIO_PULL_UP)>;
+
+		/* FT6336 is commonly register-compatible with FT5336 driver path. */
+		ft6336_touch: touch@38 {
+			compatible = "focaltech,ft5336";
+			reg = <0x38>;
+			int-gpios = <&gpioe 2 GPIO_ACTIVE_LOW>;
+			screen-width = <240>;
+			screen-height = <320>;
+			status = "okay";
+		};
+	};
+
+	aliases {
+		led0 = &user_led0;
+		pwm-led0 = &backlight_pwm;
+		sw0 = &key1;
+		sw1 = &key2;
+		sw2 = &key3;
+		die-temp0 = &die_temp;
+		volt-sensor0 = &vref;
+		volt-sensor1 = &vbat;
+	};
+};
+
+&clk_lsi {
+	status = "okay";
+};
+
+&clk_hse {
+	clock-frequency = <DT_FREQ_M(8)>;
+	status = "okay";
+};
+
+&pll {
+	div-m = <8>;
+	mul-n = <336>;
+	div-p = <2>;
+	div-q = <7>;
+	clocks = <&clk_hse>;
+	status = "okay";
+};
+
+&rcc {
+	clocks = <&pll>;
+	clock-frequency = <DT_FREQ_M(168)>;
+	ahb-prescaler = <1>;
+	apb1-prescaler = <4>;
+	apb2-prescaler = <2>;
+};
+&usart1 {
+	pinctrl-0 = <&usart1_tx_pa9 &usart1_rx_pa10>;
+	pinctrl-names = "default";
+	current-speed = <115200>;
+	status = "okay";
+};
+
+&spi1 {
+	pinctrl-0 = <&spi1_sck_pa5 &spi1_mosi_pb5>;
+	pinctrl-names = "default";
+	cs-gpios = <&gpioe 14 GPIO_ACTIVE_LOW>;
+	status = "okay";
+};
+
+&timers10 {
+	status = "disabled";
+	pwm10: pwm {
+		status = "okay";
+		pinctrl-0 = <&tim10_ch1_pb8>;
+		pinctrl-names = "default";
+	};
+};
+
+&rtc {
+	clocks = <&rcc STM32_CLOCK(APB1, 28)>,
+		 <&rcc STM32_SRC_LSI RTC_SEL(2)>;
+	status = "okay";
+
+	backup_regs {
+		status = "okay";
+	};
+};
+
+zephyr_udc0: &usbotg_fs {
+	pinctrl-0 = <&usb_otg_fs_dm_pa11 &usb_otg_fs_dp_pa12>;
+	pinctrl-names = "default";
+	status = "okay";
+};
+
+&die_temp {
+	status = "okay";
+};
+
+&vref {
+	status = "okay";
+};
+
+&vbat {
+	status = "okay";
+};
+
+&mac {
+	status = "okay";
+	pinctrl-0 = <&eth_rxd0_pc4
+		     &eth_rxd1_pc5
+		     &eth_ref_clk_pa1
+		     &eth_crs_dv_pa7
+		     &eth_tx_en_pb11
+		     &eth_txd0_pb12
+		     &eth_txd1_pb13>;
+	pinctrl-names = "default";
+	phy-connection-type = "rmii";
+	phy-handle = <&eth_phy>;
+};
+
+&mdio {
+	status = "okay";
+	pinctrl-0 = <&eth_mdio_pa2 &eth_mdc_pc1>;
+	pinctrl-names = "default";
+
+	eth_phy: ethernet-phy@0 {
+		compatible = "ethernet-phy";
+		reg = <0x0>;
+		reset-gpios = <&gpioe 12 GPIO_ACTIVE_LOW>;
+		reset-assert-duration-us = <10000>;
+		reset-deassertion-timeout-ms = <50>;
+	};
+};
+
+&rng {
+	status = "okay";
+};
+
+&dma1 {
+	status = "okay";
+};

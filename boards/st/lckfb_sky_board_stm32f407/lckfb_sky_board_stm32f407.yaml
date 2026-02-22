@@ -1,0 +1,17 @@
+identifier: lckfb_sky_board_stm32f407
+name: lckfb_sky_board_stm32f407
+type: mcu
+arch: arm
+toolchain:
+  - zephyr
+  - gnuarmemb
+ram: 192
+flash: 1024
+supported:
+  - can
+  - pwm
+  - counter
+  - adc
+  - display
+  - touch
+vendor: st

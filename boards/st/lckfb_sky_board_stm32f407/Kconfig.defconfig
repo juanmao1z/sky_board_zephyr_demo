@@ -1,0 +1,6 @@
+# Copyright (c) 2016 Linaro Limited.
+# SPDX-License-Identifier: Apache-2.0
+
+if BOARD_LCKFB_SKY_BOARD_STM32F407
+
+endif # BOARD_LCKFB_SKY_BOARD_STM32F407
