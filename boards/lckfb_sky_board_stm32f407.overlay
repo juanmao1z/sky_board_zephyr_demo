@@ -1,0 +1,3 @@
+/* Ethernet and RNG configuration moved to board-level DTS:
+ * zephyr/boards/st/lckfb_sky_board_stm32f407/lckfb_sky_board_stm32f407.dts
+ */

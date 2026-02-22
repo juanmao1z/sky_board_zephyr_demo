@@ -1,0 +1,20 @@
+CompileFlags:
+  CompilationDatabase: build/lckfb_sky_board_stm32f407
+  Remove:
+    - -fno-printf-return-value
+    - -fno-reorder-functions
+    - -mfp16-format=*
+  Add:
+    - --target=arm-zephyr-eabi
+    - -isystem
+    - C:/Users/zhouz/zephyr-sdk-0.17.4/arm-zephyr-eabi/arm-zephyr-eabi/include/c++/12.2.0
+    - -isystem
+    - C:/Users/zhouz/zephyr-sdk-0.17.4/arm-zephyr-eabi/arm-zephyr-eabi/include/c++/12.2.0/arm-zephyr-eabi
+    - -isystem
+    - C:/Users/zhouz/zephyr-sdk-0.17.4/arm-zephyr-eabi/arm-zephyr-eabi/include/c++/12.2.0/backward
+    - -Wno-unused-variable
+    - -Wno-unused-function
+Diagnostics:
+  Suppress:
+    - -Wvla-cxx-extension
+  UnusedIncludes: None

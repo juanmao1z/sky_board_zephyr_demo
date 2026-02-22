@@ -1,0 +1,7 @@
+sample:
+  description: Sky board Zephyr C++ layered demo
+  name: sky_board_zephyr_demo
+common:
+  tags: introduction cpp
+  integration_platforms:
+    - lckfb_sky_board_stm32f407
