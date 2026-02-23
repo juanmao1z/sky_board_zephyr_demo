@@ -125,6 +125,7 @@
 		sw0 = &key1;
 		sw1 = &key2;
 		sw2 = &key3;
+		sdhc0 = &sdmmc1;
 		die-temp0 = &die_temp;
 		volt-sensor0 = &vref;
 		volt-sensor1 = &vbat;
@@ -132,6 +133,10 @@
 };
 
 &clk_lsi {
+	status = "okay";
+};
+
+&clk_lse {
 	status = "okay";
 };
 
@@ -170,6 +175,19 @@
 	status = "okay";
 };
 
+&sdmmc1 {
+	status = "okay";
+	pinctrl-0 = <&sdio_d0_pc8 &sdio_d1_pc9
+		     &sdio_d2_pc10 &sdio_d3_pc11
+		     &sdio_ck_pc12 &sdio_cmd_pd2>;
+	pinctrl-names = "default";
+	bus-width = <4>;
+	/* Lower SDIO transfer clock for signal margin during bring-up. */
+	clk-div = <10>;
+	cd-gpios = <&gpiod 3 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
+	disk-name = "SD";
+};
+
 &timers10 {
 	status = "disabled";
 	pwm10: pwm {
@@ -181,7 +199,7 @@
 
 &rtc {
 	clocks = <&rcc STM32_CLOCK(APB1, 28)>,
-		 <&rcc STM32_SRC_LSI RTC_SEL(2)>;
+		 <&rcc STM32_SRC_LSE RTC_SEL(1)>;
 	status = "okay";
 
 	backup_regs {

@@ -15,6 +15,7 @@ target_sources(app PRIVATE
   subsys/platform/zephyr_display.cpp
   subsys/platform/zephyr_ethernet.cpp
   subsys/servers/hello_service.cpp
+  subsys/servers/sdcard_service.cpp
   subsys/servers/time_service.cpp
   subsys/servers/tcp_service.cpp
   subsys/platform/zephyr_logger.cpp

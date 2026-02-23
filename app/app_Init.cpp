@@ -9,6 +9,7 @@
 #include "platform/platform_ethernet.hpp"
 #include "platform/platform_logger.hpp"
 #include "servers/hello_service.hpp"
+#include "servers/sdcard_service.hpp"
 #include "servers/time_service.hpp"
 #include "servers/tcp_service.hpp"
 
@@ -66,6 +67,14 @@ int app_Init() noexcept
 		platform::logger().error("failed to start time service", ret);
 		return ret;
 	}
+
+	static servers::SdcardService sdcard_service(platform::logger());
+	ret = sdcard_service.run();
+	if (ret < 0) {
+		platform::logger().error("failed to start sdcard service", ret);
+		return ret;
+	}
+	sdcard_service.set_initialized(true);
 
 	return 0;
 }
