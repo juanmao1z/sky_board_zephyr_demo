@@ -9,7 +9,4 @@
  * @brief 应用入口函数。
  * @return app 层初始化结果码，0 表示成功，负值表示失败。
  */
-int main(void)
-{
-	return app::app_Init();
-}
+int main(void) { return app::app_Init(); }

@@ -1,0 +1,15 @@
+{
+  "name": "sky_board_zephyr_demo-doc-tools",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Documentation formatting and lint tooling for sky_board_zephyr_demo",
+  "scripts": {
+    "docs:format": "prettier --write \"docs/**/*.md\" \"*.md\"",
+    "docs:lint": "markdownlint-cli2 \"docs/**/*.md\" \"*.md\"",
+    "docs:check": "prettier --check \"docs/**/*.md\" \"*.md\" && markdownlint-cli2 \"docs/**/*.md\" \"*.md\""
+  },
+  "devDependencies": {
+    "markdownlint-cli2": "^0.18.1",
+    "prettier": "^3.6.2"
+  }
+}

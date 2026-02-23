@@ -13,4 +13,4 @@ namespace platform {
  */
 int ethernet_init() noexcept;
 
-} // namespace platform
+}  // namespace platform

@@ -21,7 +21,6 @@ constexpr uint8_t kSpacing = 1U;
  * @param c 输入字符。
  * @return 指向 5 字节字模数据的指针。
  */
-const uint8_t *glyph(char c) noexcept;
+const uint8_t* glyph(char c) noexcept;
 
-} // namespace platform::font5x7
-
+}  // namespace platform::font5x7

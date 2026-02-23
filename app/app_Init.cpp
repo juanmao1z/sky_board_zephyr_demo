@@ -11,8 +11,8 @@
 #include "servers/hello_service.hpp"
 #include "servers/sdcard_service.hpp"
 #include "servers/sensor_service.hpp"
-#include "servers/time_service.hpp"
 #include "servers/tcp_service.hpp"
+#include "servers/time_service.hpp"
 
 namespace app {
 
@@ -21,69 +21,66 @@ namespace app {
  * @return 0 表示初始化/启动成功；负值表示启动失败。
  * @note 使用静态服务对象保证后台线程运行期间对象生命周期有效。
  */
-int app_Init() noexcept
-{
-	platform::IDisplay &display = platform::display();
-	int ret = display.init();
-	if (ret < 0) {
-		platform::logger().error("failed to init display", ret);
-		return ret;
-	}
-	ret = display.backlight().set_brightness(100U);
-	if (ret < 0) {
-		platform::logger().error("failed to set backlight brightness", ret);
-		return ret;
-	}
-	ret = display.show_boot_screen();
-	if (ret < 0) {
-		platform::logger().error("failed to draw display boot screen", ret);
-		return ret;
-	}
+int app_Init() noexcept {
+  platform::IDisplay& display = platform::display();
+  int ret = display.init();
+  if (ret < 0) {
+    platform::logger().error("failed to init display", ret);
+    return ret;
+  }
+  ret = display.backlight().set_brightness(100U);
+  if (ret < 0) {
+    platform::logger().error("failed to set backlight brightness", ret);
+    return ret;
+  }
+  ret = display.show_boot_screen();
+  if (ret < 0) {
+    platform::logger().error("failed to draw display boot screen", ret);
+    return ret;
+  }
 
-	platform::logger().info("display boot screen ready");
+  platform::logger().info("display boot screen ready");
+  ret = platform::ethernet_init();
+  if (ret < 0) {
+    platform::logger().error("failed to init ethernet", ret);
+    return ret;
+  }
+  static servers::TimeService time_service(platform::logger());
+  ret = time_service.run();
+  if (ret < 0) {
+    platform::logger().error("failed to start time service", ret);
+    return ret;
+  }
 
-	ret = platform::ethernet_init();
-	if (ret < 0) {
-		platform::logger().error("failed to init ethernet", ret);
-		return ret;
-	}
+  static servers::HelloService hello_service(platform::logger());
+  ret = hello_service.run();
+  if (ret < 0) {
+    platform::logger().error("failed to start hello service", ret);
+    return ret;
+  }
 
-	static servers::HelloService hello_service(platform::logger());
-	ret = hello_service.run();
-	if (ret < 0) {
-		platform::logger().error("failed to start hello service", ret);
-		return ret;
-	}
+  static servers::TcpService tcp_service(platform::logger());
+  ret = tcp_service.run();
+  if (ret < 0) {
+    platform::logger().error("failed to start tcp service", ret);
+    return ret;
+  }
 
-	static servers::TcpService tcp_service(platform::logger());
-	ret = tcp_service.run();
-	if (ret < 0) {
-		platform::logger().error("failed to start tcp service", ret);
-		return ret;
-	}
+  static servers::SdcardService sdcard_service(platform::logger());
+  ret = sdcard_service.run();
+  if (ret < 0) {
+    platform::logger().error("failed to start sdcard service", ret);
+    return ret;
+  }
+  sdcard_service.set_initialized(true);
 
-	static servers::TimeService time_service(platform::logger());
-	ret = time_service.run();
-	if (ret < 0) {
-		platform::logger().error("failed to start time service", ret);
-		return ret;
-	}
+  static servers::SensorService sensor_service(platform::logger());
+  ret = sensor_service.run();
+  if (ret < 0) {
+    platform::logger().error("failed to start sensor service", ret);
+    return ret;
+  }
 
-	static servers::SdcardService sdcard_service(platform::logger());
-	ret = sdcard_service.run();
-	if (ret < 0) {
-		platform::logger().error("failed to start sdcard service", ret);
-		return ret;
-	}
-	sdcard_service.set_initialized(true);
-
-	static servers::SensorService sensor_service(platform::logger());
-	ret = sensor_service.run();
-	if (ret < 0) {
-		platform::logger().error("failed to start sensor service", ret);
-		return ret;
-	}
-
-	return 0;
+  return 0;
 }
-} // namespace app
+}  // namespace app

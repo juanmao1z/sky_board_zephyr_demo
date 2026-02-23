@@ -95,3 +95,67 @@ d:\zephyrproject\.venv\Scripts\west.exe flash `
 
 - 当板卡、构建目录、west 路径发生变化时，第一时间更新此文件。
 - 优先保持命令可直接复制执行，不写模糊路径。
+
+## 10. 文档格式化与规范（Google 风格落地）
+
+### 10.1 首次安装工具
+
+```powershell
+cd d:/zephyrproject/myproject/sky_board_zephyr_demo
+npm install
+```
+
+### 10.2 自动格式化文档
+
+```powershell
+cd d:/zephyrproject/myproject/sky_board_zephyr_demo
+npm run docs:format
+```
+
+### 10.3 规范检查
+
+```powershell
+cd d:/zephyrproject/myproject/sky_board_zephyr_demo
+npm run docs:lint
+```
+
+### 10.4 提交前检查（推荐）
+
+```powershell
+cd d:/zephyrproject/myproject/sky_board_zephyr_demo
+npm run docs:check
+```
+
+### 10.5 已配置文件
+
+- `package.json`: 文档格式化/检查脚本
+- `.prettierrc.json`: Markdown 自动换行与宽度规则
+- `.markdownlint.json`: markdownlint 规则（含 `MD029: one`）
+
+## 11. C++ 格式规范（Google）
+
+### 11.1 规则文件
+
+- 项目根目录 `.clang-format` 已配置为 `BasedOnStyle: Google`（C++17）。
+
+### 11.2 格式化全部 C++ 文件
+
+```powershell
+cd d:/zephyrproject/myproject/sky_board_zephyr_demo
+Get-ChildItem app,include,subsys,tests -Recurse -Include *.cpp,*.hpp -File | `
+  ForEach-Object { & "D:/LLVM/bin/clang-format.exe" -i $_.FullName }
+```
+
+### 11.3 检查格式（不改文件）
+
+```powershell
+cd d:/zephyrproject/myproject/sky_board_zephyr_demo
+Get-ChildItem app,include,subsys,tests -Recurse -Include *.cpp,*.hpp -File | `
+  ForEach-Object { & "D:/LLVM/bin/clang-format.exe" --dry-run --Werror $_.FullName }
+```
+
+### 11.4 推荐流程
+
+1. 改代码后先执行 11.2 自动格式化。
+1. 再执行 11.3 确认无格式违规。
+1. 最后执行 `west build` 做编译验证。

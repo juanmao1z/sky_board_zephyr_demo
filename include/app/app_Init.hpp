@@ -13,4 +13,4 @@ namespace app {
  */
 int app_Init() noexcept;
 
-} // namespace app
+}  // namespace app

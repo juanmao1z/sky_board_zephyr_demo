@@ -26,3 +26,6 @@ compile_commands.json
 .idea/
 .DS_Store
 Thumbs.db
+
+# Node.js tooling
+node_modules/
