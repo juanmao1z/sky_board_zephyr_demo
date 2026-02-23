@@ -10,6 +10,7 @@
 #include "platform/platform_logger.hpp"
 #include "servers/hello_service.hpp"
 #include "servers/sdcard_service.hpp"
+#include "servers/sensor_service.hpp"
 #include "servers/time_service.hpp"
 #include "servers/tcp_service.hpp"
 
@@ -75,6 +76,13 @@ int app_Init() noexcept
 		return ret;
 	}
 	sdcard_service.set_initialized(true);
+
+	static servers::SensorService sensor_service(platform::logger());
+	ret = sensor_service.run();
+	if (ret < 0) {
+		platform::logger().error("failed to start sensor service", ret);
+		return ret;
+	}
 
 	return 0;
 }

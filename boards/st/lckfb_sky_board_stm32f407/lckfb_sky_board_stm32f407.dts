@@ -168,6 +168,27 @@
 	status = "okay";
 };
 
+&i2c1 {
+	pinctrl-0 = <&i2c1_scl_pb6 &i2c1_sda_pb7>;
+	pinctrl-names = "default";
+	clock-frequency = <100000>;
+	status = "okay";
+
+	ina226_sensor: ina226@40 {
+		compatible = "ti,ina226";
+		reg = <0x40>;
+		rshunt-micro-ohms = <15000>;
+		current-lsb-microamps = <1000>;
+		status = "okay";
+	};
+
+	aht20_sensor: aht20@38 {
+		compatible = "aosong,aht20";
+		reg = <0x38>;
+		status = "okay";
+	};
+};
+
 &spi1 {
 	pinctrl-0 = <&spi1_sck_pa5 &spi1_mosi_pb5>;
 	pinctrl-names = "default";

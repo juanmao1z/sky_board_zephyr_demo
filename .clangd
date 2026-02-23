@@ -17,4 +17,5 @@ CompileFlags:
 Diagnostics:
   Suppress:
     - -Wvla-cxx-extension
+    - pp_hash_error
   UnusedIncludes: None
