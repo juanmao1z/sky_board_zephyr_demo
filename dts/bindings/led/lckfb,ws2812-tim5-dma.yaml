@@ -1,0 +1,30 @@
+# SPDX-License-Identifier: Apache-2.0
+
+description: LCKFB WS2812 controller driven by STM32 TIM5 CH4 + DMA.
+
+compatible: "lckfb,ws2812-tim5-dma"
+
+include: base.yaml
+
+properties:
+  chain-length:
+    type: int
+    required: true
+    description: Number of LEDs in the strip.
+
+  color-order:
+    type: string
+    default: "grb"
+    description: "Color byte order. Supported values are grb, rgb, brg."
+
+  reset-us:
+    type: int
+    default: 80
+    description: Reset/latch low period in microseconds.
+
+  pixel-offset:
+    type: int
+    default: 0
+    description: >
+      Logical-to-physical pixel rotation offset. Effective index is
+      (logical_index + pixel-offset) mod chain-length.

@@ -16,11 +16,12 @@ target_sources(app PRIVATE
   subsys/platform/zephyr_encoder.cpp
   subsys/platform/zephyr_ethernet.cpp
   subsys/platform/zephyr_imu.cpp
+  subsys/platform/zephyr_storage.cpp
   subsys/platform/zephyr_sensors.cpp
+  subsys/platform/zephyr_ws2812.cpp
   subsys/servers/encoder_service.cpp
   subsys/servers/hello_service.cpp
   subsys/servers/imu_service.cpp
-  subsys/servers/sdcard_service.cpp
   subsys/servers/sensor_service.cpp
   subsys/servers/time_service.cpp
   subsys/servers/tcp_service.cpp

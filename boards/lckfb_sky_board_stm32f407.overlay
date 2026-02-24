@@ -1,1 +1,28 @@
-/* Empty board overlay. */
+/ {
+	ws2812_led0: ws2812_led0 {
+		compatible = "lckfb,ws2812-tim5-dma";
+		status = "okay";
+		chain-length = <3>;
+		color-order = "grb";
+		reset-us = <300>;
+		pixel-offset = <0>;
+	};
+
+	aliases {
+		ws2812-0 = &ws2812_led0;
+	};
+};
+
+&timers5 {
+	status = "okay";
+
+	pwm5: pwm {
+		status = "okay";
+		pinctrl-0 = <&tim5_ch4_pa3>;
+		pinctrl-names = "default";
+	};
+};
+
+&dma1 {
+	status = "okay";
+};

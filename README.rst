@@ -20,7 +20,7 @@ SD 卡和传感器等多个服务.
   - 通过 HTTP 获取 UTC 时间
   - 转换为北京时间(UTC+8)
   - 写入 RTC 并切换日志时间戳
-- SD 卡服务(SDIO + FATFS)
+- 存储平台接口(SDIO + FATFS, `platform::storage()`)
 - 泛化传感器框架:
   - `SensorHub` 支持注册 N 个驱动
   - `SensorService` 按注册表统一轮询采样
@@ -73,6 +73,14 @@ SD 卡和传感器等多个服务.
 - `[time] Beijing: ...`
 - `[sd] mounted /SD:`
 - `[sensor] ...`
+
+存储接口说明
+============
+
+当前存储能力位于 platform 层, 不再通过 `SdcardService` 启动.
+
+- 启动路径: `app_Init` 调用 `platform::storage().init()`
+- 读写入口: `platform::storage().write_file()` / `platform::storage().read_file()`
 
 
 传感器扩展

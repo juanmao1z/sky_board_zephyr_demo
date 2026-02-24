@@ -208,5 +208,5 @@ Get-ChildItem app,include,subsys,tests -Recurse -Include *.cpp,*.hpp -File | `
 ```
 
 ```text
-按 docs/codex-runbook.md 做回归检查：TCP(8000)、TimeService、SdcardService、SensorService
+按 docs/codex-runbook.md 做回归检查：TCP(8000)、TimeService、platform::storage、SensorService
 ```

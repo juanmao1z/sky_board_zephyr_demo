@@ -64,11 +64,23 @@ class ImuService {
   /** @brief 服务线程优先级。 */
   static constexpr int kPriority = K_LOWEST_APPLICATION_THREAD_PRIO;
   /** @brief 采样周期（毫秒），10ms 对应 100Hz。 */
-  static constexpr int64_t kSamplePeriodMs = 10;
+  static constexpr int64_t kSamplePeriodMs = 5;
   /** @brief 是否启用串口打印。 */
   static constexpr bool kEnablePrint = true;
   /** @brief 打印分频：每 N 个样本打印 1 次。10 表示 10Hz 打印。 */
-  static constexpr uint32_t kPrintEveryNSamples = 10;
+  static constexpr uint32_t kPrintEveryNSamples = 1;
+  /** @brief 上电陀螺零偏校准时长（毫秒）。 */
+  static constexpr int64_t kGyroBiasCalibMs = 2500;
+  /** @brief 判定校准有效的最小样本数。 */
+  static constexpr uint32_t kGyroBiasMinSamples = 100;
+  /** @brief 在线零偏更新: 静止判定所需的连续样本数（100Hz 下 25=250ms）。 */
+  static constexpr uint32_t kOnlineBiasStreakSamples = 50;
+  /** @brief 在线零偏更新: 加速度模长容差（mg）。 */
+  static constexpr int32_t kOnlineBiasAccelNormTolMg = 80;
+  /** @brief 在线零偏更新: 陀螺静止阈值（mdps）。 */
+  static constexpr int32_t kOnlineBiasGyroStillThrMdps = 80;
+  /** @brief 在线零偏更新: IIR 分母（越大越慢）。 */
+  static constexpr int32_t kOnlineBiasIirDiv = 64;
 
   /**
    * @brief 线程入口静态适配函数。
@@ -82,6 +94,11 @@ class ImuService {
    * @brief 服务线程主循环。
    */
   void threads() noexcept;
+
+  /**
+   * @brief 上电静止阶段计算陀螺零偏。
+   */
+  void calibrate_gyro_bias() noexcept;
 
   /** @brief 日志接口。 */
   platform::ILogger& log_;
@@ -105,6 +122,18 @@ class ImuService {
   ImuPublishCallback publish_cb_ = nullptr;
   /** @brief 发布回调用户参数。 */
   void* publish_user_ = nullptr;
+  /** @brief 陀螺 X 轴零偏，单位 mdps。 */
+  int32_t gyro_bias_x_mdps_ = 0;
+  /** @brief 陀螺 Y 轴零偏，单位 mdps。 */
+  int32_t gyro_bias_y_mdps_ = 0;
+  /** @brief 陀螺 Z 轴零偏，单位 mdps。 */
+  int32_t gyro_bias_z_mdps_ = 0;
+  /** @brief 陀螺零偏是否有效。 */
+  bool gyro_bias_valid_ = false;
+  /** @brief 连续静止样本计数。 */
+  uint32_t still_streak_ = 0;
+  /** @brief 在线零偏更新计数。 */
+  uint32_t online_bias_updates_ = 0;
 };
 
 }  // namespace servers

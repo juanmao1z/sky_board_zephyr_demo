@@ -1,3 +1,19 @@
 mainmenu "Sky Board Zephyr Demo"
 
 source "Kconfig.zephyr"
+
+menu "Sky Board Demo Options"
+
+config SKY_BOARD_WS2812_TIM5_DMA_BACKEND
+	bool "Enable WS2812 TIM5 CH4 DMA backend"
+	default y
+	depends on SOC_FAMILY_STM32
+	select USE_STM32_HAL_TIM
+	select USE_STM32_HAL_TIM_EX
+	select USE_STM32_HAL_DMA
+	select USE_STM32_HAL_GPIO
+	help
+	  Enable STM32 HAL TIM/DMA/GPIO modules required by the project
+	  WS2812 backend running on TIM5 channel 4 (PA3).
+
+endmenu
