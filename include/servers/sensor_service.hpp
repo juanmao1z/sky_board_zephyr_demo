@@ -66,15 +66,19 @@ class SensorService {
 
  private:
   /** @brief 服务线程栈大小（字节）。 */
-  static constexpr size_t kStackSize = 1536;
+  static constexpr size_t kStackSize = 4096;
   /** @brief 服务线程优先级。 */
   static constexpr int kPriority = K_LOWEST_APPLICATION_THREAD_PRIO;
   /** @brief 采样周期（毫秒）。 */
   static constexpr int64_t kSamplePeriodMs = 1000;
   /** @brief 日志输出周期（毫秒）。 */
   static constexpr int64_t kLogPeriodMs = 5000;
+  /** @brief 传感器快照落盘周期（毫秒）。 */
+  static constexpr int64_t kPersistPeriodMs = 5000;
   /** @brief 每个样本缓存槽位的最大字节数。 */
   static constexpr size_t kMaxSampleBytes = 64;
+  /** @brief 传感器快照文件路径。 */
+  static constexpr const char* kPersistFilePath = "/SD:/SENSOR.CSV";
 
   /**
    * @brief 线程入口静态适配函数。
@@ -94,6 +98,16 @@ class SensorService {
    * @param now_ms 当前系统 uptime 毫秒。
    */
   void maybe_log_snapshot(int64_t now_ms) noexcept;
+  /**
+   * @brief 在持久化周期到期时写入 SD 快照。
+   * @param now_ms 当前系统 uptime 毫秒。
+   */
+  void maybe_persist_snapshot(int64_t now_ms) noexcept;
+  /**
+   * @brief 将当前快照写入 SD 卡。
+   * @param now_ms 当前系统 uptime 毫秒。
+   */
+  void persist_snapshot_to_storage(int64_t now_ms) noexcept;
   /**
    * @brief 查找指定类型样本缓存槽位下标。
    * @param type 传感器类型。
@@ -133,6 +147,14 @@ class SensorService {
   size_t cache_count_ = 0;
   /** @brief 下一次允许输出日志的时间点。 */
   int64_t next_log_ms_ = 0;
+  /** @brief 下一次允许执行 SD 持久化的时间点。 */
+  int64_t next_persist_ms_ = 0;
+  /** @brief 存储写入错误连续计数。 */
+  uint32_t storage_error_streak_ = 0;
+  /** @brief CSV 表头是否已写入。 */
+  bool storage_header_written_ = false;
+  /** @brief 当前运行周期内是否启用 SD 持久化。 */
+  bool storage_persist_enabled_ = true;
 };
 
 }  // namespace servers

@@ -26,74 +26,74 @@ namespace app {
  */
 int app_Init() noexcept {
   int ret = 0;
-  // platform::IDisplay& display = platform::display();
-  // ret = display.init();
-  // if (ret < 0) {
-  //   platform::logger().error("failed to init display", ret);
-  //   return ret;
-  // }
-  // ret = display.backlight().set_brightness(100U);
-  // if (ret < 0) {
-  //   platform::logger().error("failed to set backlight brightness", ret);
-  //   return ret;
-  // }
-  // ret = display.show_boot_screen();
-  // if (ret < 0) {
-  //   platform::logger().error("failed to draw display boot screen", ret);
-  //   return ret;
-  // }
+  platform::IDisplay& display = platform::display();
+  ret = display.init();
+  if (ret < 0) {
+    platform::logger().error("failed to init display", ret);
+    return ret;
+  }
+  ret = display.backlight().set_brightness(100U);
+  if (ret < 0) {
+    platform::logger().error("failed to set backlight brightness", ret);
+    return ret;
+  }
+  ret = display.show_boot_screen();
+  if (ret < 0) {
+    platform::logger().error("failed to draw display boot screen", ret);
+    return ret;
+  }
 
-  // platform::logger().info("display boot screen ready");
+  platform::logger().info("display boot screen ready");
 
   ret = platform::ws2812().init();
   if (ret < 0) {
     platform::logger().error("failed to init ws2812", ret);
     return ret;
   }
-  // ret = platform::ethernet_init();
-  // if (ret < 0) {
-  //   platform::logger().error("failed to init ethernet", ret);
-  //   return ret;
-  // }
-  // static servers::TimeService time_service(platform::logger());
-  // ret = time_service.run();
-  // if (ret < 0) {
-  //   platform::logger().error("failed to start time service", ret);
-  //   return ret;
-  // }
+  ret = platform::ethernet_init();
+  if (ret < 0) {
+    platform::logger().error("failed to init ethernet", ret);
+    return ret;
+  }
+  static servers::TimeService time_service(platform::logger());
+  ret = time_service.run();
+  if (ret < 0) {
+    platform::logger().error("failed to start time service", ret);
+    return ret;
+  }
 
-  // static servers::HelloService hello_service(platform::logger());
-  // ret = hello_service.run();
-  // if (ret < 0) {
-  //   platform::logger().error("failed to start hello service", ret);
-  //   return ret;
-  // }
-  // static servers::TcpService tcp_service(platform::logger());
-  // ret = tcp_service.run();
-  // if (ret < 0) {
-  //   platform::logger().error("failed to start tcp service", ret);
-  //   return ret;
-  // }
+  static servers::HelloService hello_service(platform::logger());
+  ret = hello_service.run();
+  if (ret < 0) {
+    platform::logger().error("failed to start hello service", ret);
+    return ret;
+  }
+  static servers::TcpService tcp_service(platform::logger());
+  ret = tcp_service.run();
+  if (ret < 0) {
+    platform::logger().error("failed to start tcp service", ret);
+    return ret;
+  }
 
-  // ret = platform::storage().init();
-  // if (ret < 0) {
-  //   platform::logger().error("failed to init storage", ret);
-  //   return ret;
-  // }
+  ret = platform::storage().init();
+  if (ret < 0) {
+    platform::logger().error("failed to init storage", ret);
+    return ret;
+  }
 
-  // static servers::SensorService sensor_service(platform::logger());
-  // ret = sensor_service.run();
-  // if (ret < 0) {
-  //   platform::logger().error("failed to start sensor service", ret);
-  //   return ret;
-  // }
+  static servers::SensorService sensor_service(platform::logger());
+  ret = sensor_service.run();
+  if (ret < 0) {
+    platform::logger().error("failed to start sensor service", ret);
+    return ret;
+  }
 
-  // static servers::EncoderService encoder_service(platform::logger());
-  // ret = encoder_service.run();
-  // if (ret < 0) {
-  //   platform::logger().error("failed to start encoder service", ret);
-  //   return ret;
-  // }
+  static servers::EncoderService encoder_service(platform::logger());
+  ret = encoder_service.run();
+  if (ret < 0) {
+    platform::logger().error("failed to start encoder service", ret);
+    return ret;
+  }
 
   static servers::ImuService imu_service(platform::logger());
   ret = imu_service.run();
@@ -101,7 +101,6 @@ int app_Init() noexcept {
     platform::logger().error("failed to start imu service", ret);
     return ret;
   }
-
   return 0;
 }
 

@@ -9,12 +9,25 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "platform/platform_storage.hpp"
+
 namespace servers {
 
+/**
+ * @brief 服务线程静态入口适配函数。
+ * @param p1 SensorService 对象指针。
+ * @param p2 未使用。
+ * @param p3 未使用。
+ */
 void SensorService::threadEntry(void* p1, void*, void*) {
   static_cast<SensorService*>(p1)->threads();
 }
 
+/**
+ * @brief 按类型在缓存槽位中查找下标。
+ * @param type 传感器类型。
+ * @return 有效下标；未找到返回 -1。
+ */
 int SensorService::find_cache_index(platform::SensorType type) const noexcept {
   for (size_t i = 0; i < cache_count_; ++i) {
     if (cache_[i].type == type) {
@@ -24,6 +37,10 @@ int SensorService::find_cache_index(platform::SensorType type) const noexcept {
   return -1;
 }
 
+/**
+ * @brief 按 SensorHub 注册表重建缓存布局。
+ * @return 0 表示成功；负值表示失败。
+ */
 int SensorService::rebuild_cache_layout() noexcept {
   const size_t count = sensor_hub_.registered_count();
   if (count > platform::SensorHub::kMaxDrivers) {
@@ -64,11 +81,14 @@ void SensorService::threads() noexcept {
    * 2) 调用 Hub 的通用 read(type, ...) 获取样本。
    * 3) 成功则更新缓存，失败则记录限频错误日志。
    * 4) 到达日志周期后输出当前缓存快照。
-   * 5) 停止请求到达后退出线程。
+   * 5) 到达持久化周期后写入 SD 卡。
+   * 6) 停止请求到达后退出线程。
    */
 
   log_.info("sensor service starting");
-  next_log_ms_ = k_uptime_get() + kLogPeriodMs;
+  const int64_t now_ms = k_uptime_get();
+  next_log_ms_ = now_ms + kLogPeriodMs;
+  next_persist_ms_ = now_ms + kPersistPeriodMs;
 
   while (atomic_get(&stop_requested_) == 0) {
     for (size_t i = 0; i < cache_count_; ++i) {
@@ -89,7 +109,9 @@ void SensorService::threads() noexcept {
       }
     }
 
-    maybe_log_snapshot(k_uptime_get());
+    const int64_t loop_now_ms = k_uptime_get();
+    maybe_log_snapshot(loop_now_ms);
+    maybe_persist_snapshot(loop_now_ms);
     k_sleep(K_MSEC(kSamplePeriodMs));
   }
 
@@ -98,6 +120,10 @@ void SensorService::threads() noexcept {
   log_.info("sensor service stopped");
 }
 
+/**
+ * @brief 日志周期处理：按类型打印当前快照。
+ * @param now_ms 当前系统 uptime 毫秒。
+ */
 void SensorService::maybe_log_snapshot(int64_t now_ms) noexcept {
   if (now_ms < next_log_ms_) {
     return;
@@ -124,17 +150,19 @@ void SensorService::maybe_log_snapshot(int64_t now_ms) noexcept {
     switch (type) {
       case platform::SensorType::Ina226: {
         if (sample_size >= sizeof(platform::Ina226Sample)) {
-          const auto& ina = *reinterpret_cast<const platform::Ina226Sample*>(sample);
+          platform::Ina226Sample ina = {};
+          (void)memcpy(&ina, sample, sizeof(ina));
           (void)snprintf(msg, sizeof(msg), "[sensor] INA226: V=%ldmV I=%ldmA P=%ldmW",
-                         static_cast<long>(ina.bus_mv), static_cast<long>(ina.current_ma),
-                         static_cast<long>(ina.power_mw));
+                          static_cast<long>(ina.bus_mv), static_cast<long>(ina.current_ma),
+                          static_cast<long>(ina.power_mw));
           log_.info(msg);
         }
         break;
       }
       case platform::SensorType::Aht20: {
         if (sample_size >= sizeof(platform::Aht20Sample)) {
-          const auto& aht = *reinterpret_cast<const platform::Aht20Sample*>(sample);
+          platform::Aht20Sample aht = {};
+          (void)memcpy(&aht, sample, sizeof(aht));
           (void)snprintf(
               msg, sizeof(msg), "[sensor] AHT20: T=%ld.%03ldC RH=%ld.%01ld%%",
               static_cast<long>(aht.temp_mc / 1000), static_cast<long>(aht.temp_mc % 1000),
@@ -157,6 +185,115 @@ void SensorService::maybe_log_snapshot(int64_t now_ms) noexcept {
   next_log_ms_ = now_ms + kLogPeriodMs;
 }
 
+/**
+ * @brief 持久化周期处理：按周期触发一次落盘。
+ * @param now_ms 当前系统 uptime 毫秒。
+ */
+void SensorService::maybe_persist_snapshot(const int64_t now_ms) noexcept {
+  if (now_ms < next_persist_ms_) {
+    return;
+  }
+  persist_snapshot_to_storage(now_ms);
+  next_persist_ms_ = now_ms + kPersistPeriodMs;
+}
+
+/**
+ * @brief 将当前传感器快照追加写入 SD 卡 CSV。
+ * @param now_ms 当前系统 uptime 毫秒。
+ * @note 写失败后会关闭本轮持久化，避免反复阻塞。
+ */
+void SensorService::persist_snapshot_to_storage(const int64_t now_ms) noexcept {
+  /* 步骤 1：检查持久化开关。 */
+  if (!storage_persist_enabled_) {
+    return;
+  }
+
+  platform::Ina226Sample ina = {};
+  platform::Aht20Sample aht = {};
+  bool ina_valid = false;
+  bool aht_valid = false;
+
+  /* 步骤 2：从缓存中提取最新 INA226/AHT20 样本。 */
+  for (size_t i = 0; i < cache_count_; ++i) {
+    k_mutex_lock(&mutex_, K_FOREVER);
+    const platform::SensorType type = cache_[i].type;
+    const bool valid = cache_[i].valid;
+    const size_t sample_size = cache_[i].sample_size;
+    uint8_t sample[kMaxSampleBytes] = {};
+    if (valid) {
+      (void)memcpy(sample, cache_[i].data, sample_size);
+    }
+    k_mutex_unlock(&mutex_);
+
+    if (!valid) {
+      continue;
+    }
+
+    if (type == platform::SensorType::Ina226 && sample_size >= sizeof(platform::Ina226Sample)) {
+      (void)memcpy(&ina, sample, sizeof(ina));
+      ina_valid = true;
+    } else if (type == platform::SensorType::Aht20 &&
+               sample_size >= sizeof(platform::Aht20Sample)) {
+      (void)memcpy(&aht, sample, sizeof(aht));
+      aht_valid = true;
+    }
+  }
+
+  if (!ina_valid && !aht_valid) {
+    return;
+  }
+
+  /* 步骤 3：首次写入时补 CSV 表头。 */
+  if (!storage_header_written_) {
+    static constexpr char kHeader[] =
+        "uptime_ms,bus_mv,current_ma,power_mw,temp_mc,rh_mpermille\n";
+    const int header_ret = platform::storage().write_file(kPersistFilePath, kHeader,
+                                                          sizeof(kHeader) - 1U, true);
+    if (header_ret < 0) {
+      ++storage_error_streak_;
+      if (storage_error_streak_ == 1U || (storage_error_streak_ % 10U) == 0U) {
+        log_.error("[sensor] sd write header failed", header_ret);
+      }
+      storage_persist_enabled_ = false;
+      log_.error("[sensor] sd persist disabled after header write failure", header_ret);
+      return;
+    }
+    storage_header_written_ = true;
+  }
+
+  /* 步骤 4：格式化一行 CSV 并追加写入。 */
+  char line[200] = {};
+  const int32_t bus_mv = ina_valid ? ina.bus_mv : -1;
+  const int32_t current_ma = ina_valid ? ina.current_ma : -1;
+  const int32_t power_mw = ina_valid ? ina.power_mw : -1;
+  const int32_t temp_mc = aht_valid ? aht.temp_mc : -1;
+  const int32_t rh_mpermille = aht_valid ? aht.rh_mpermille : -1;
+  const int n = snprintf(line, sizeof(line), "%lld,%ld,%ld,%ld,%ld,%ld\n",
+                         static_cast<long long>(now_ms), static_cast<long>(bus_mv),
+                         static_cast<long>(current_ma), static_cast<long>(power_mw),
+                         static_cast<long>(temp_mc), static_cast<long>(rh_mpermille));
+  if (n <= 0 || static_cast<size_t>(n) >= sizeof(line)) {
+    return;
+  }
+
+  const int ret = platform::storage().write_file(kPersistFilePath, line, static_cast<size_t>(n), true);
+  if (ret < 0) {
+    ++storage_error_streak_;
+    if (storage_error_streak_ == 1U || (storage_error_streak_ % 10U) == 0U) {
+      log_.error("[sensor] sd write sample failed", ret);
+    }
+    storage_persist_enabled_ = false;
+    log_.error("[sensor] sd persist disabled after sample write failure", ret);
+    return;
+  }
+  log_.info("[sdcard] sd write sample successed");
+
+  storage_error_streak_ = 0U;
+}
+
+/**
+ * @brief 请求停止传感器服务线程。
+ */
 void SensorService::stop() noexcept {
   if (atomic_get(&running_) == 0) {
     return;
@@ -168,6 +305,10 @@ void SensorService::stop() noexcept {
   }
 }
 
+/**
+ * @brief 启动传感器服务线程（幂等）。
+ * @return 0 表示成功；负值表示失败。
+ */
 int SensorService::run() noexcept {
   if (!atomic_cas(&running_, 0, 1)) {
     log_.info("sensor service already running");
@@ -191,6 +332,10 @@ int SensorService::run() noexcept {
 
   atomic_set(&stop_requested_, 0);
   next_log_ms_ = 0;
+  next_persist_ms_ = 0;
+  storage_error_streak_ = 0U;
+  storage_header_written_ = false;
+  storage_persist_enabled_ = true;
 
   thread_id_ = k_thread_create(&thread_, stack_, K_THREAD_STACK_SIZEOF(stack_), threadEntry, this,
                                nullptr, nullptr, kPriority, 0, K_NO_WAIT);
@@ -204,6 +349,13 @@ int SensorService::run() noexcept {
   return 0;
 }
 
+/**
+ * @brief 获取指定类型传感器的最新缓存样本。
+ * @param type 传感器类型。
+ * @param out 输出缓冲区。
+ * @param out_size 输出缓冲区字节数。
+ * @return 0 表示成功；负值表示失败。
+ */
 int SensorService::get_latest(platform::SensorType type, void* out, size_t out_size) noexcept {
   if (out == nullptr) {
     return -EINVAL;
@@ -228,10 +380,20 @@ int SensorService::get_latest(platform::SensorType type, void* out, size_t out_s
   return 0;
 }
 
+/**
+ * @brief 获取最新 INA226 样本。
+ * @param out 输出样本。
+ * @return 0 表示成功；负值表示失败。
+ */
 int SensorService::get_latest_ina226(platform::Ina226Sample& out) noexcept {
   return get_latest(platform::SensorType::Ina226, &out, sizeof(out));
 }
 
+/**
+ * @brief 获取最新 AHT20 样本。
+ * @param out 输出样本。
+ * @return 0 表示成功；负值表示失败。
+ */
 int SensorService::get_latest_aht20(platform::Aht20Sample& out) noexcept {
   return get_latest(platform::SensorType::Aht20, &out, sizeof(out));
 }

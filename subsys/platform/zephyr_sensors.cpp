@@ -4,6 +4,7 @@
  */
 
 #include <errno.h>
+#include <string.h>
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>
 #include <zephyr/drivers/sensor.h>
@@ -97,7 +98,14 @@ class ZephyrIna226Sensor final : public platform::IIna226Sensor {
     if (out_size < sizeof(platform::Ina226Sample)) {
       return -ENOSPC;
     }
-    return read(*static_cast<platform::Ina226Sample*>(out));
+    /* 使用本地对齐结构体承载采样，避免调用方缓冲区未对齐导致硬 Fault。 */
+    platform::Ina226Sample sample = {};
+    const int ret = read(sample);
+    if (ret < 0) {
+      return ret;
+    }
+    (void)memcpy(out, &sample, sizeof(sample));
+    return 0;
   }
 
  private:
@@ -177,7 +185,14 @@ class ZephyrAht20Sensor final : public platform::IAht20Sensor {
     if (out_size < sizeof(platform::Aht20Sample)) {
       return -ENOSPC;
     }
-    return read(*static_cast<platform::Aht20Sample*>(out));
+    /* 使用本地对齐结构体承载采样，避免调用方缓冲区未对齐导致硬 Fault。 */
+    platform::Aht20Sample sample = {};
+    const int ret = read(sample);
+    if (ret < 0) {
+      return ret;
+    }
+    (void)memcpy(out, &sample, sizeof(sample));
+    return 0;
   }
 
  private:

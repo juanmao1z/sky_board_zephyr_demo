@@ -64,11 +64,11 @@ class ImuService {
   /** @brief 服务线程优先级。 */
   static constexpr int kPriority = K_LOWEST_APPLICATION_THREAD_PRIO;
   /** @brief 采样周期（毫秒），10ms 对应 100Hz。 */
-  static constexpr int64_t kSamplePeriodMs = 5;
+  static constexpr int64_t kSamplePeriodMs = 10;
   /** @brief 是否启用串口打印。 */
   static constexpr bool kEnablePrint = true;
   /** @brief 打印分频：每 N 个样本打印 1 次。10 表示 10Hz 打印。 */
-  static constexpr uint32_t kPrintEveryNSamples = 1;
+  static constexpr uint32_t kPrintEveryNSamples = 10;
   /** @brief 上电陀螺零偏校准时长（毫秒）。 */
   static constexpr int64_t kGyroBiasCalibMs = 2500;
   /** @brief 判定校准有效的最小样本数。 */
