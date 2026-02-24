@@ -8,7 +8,9 @@
 #include "platform/platform_display.hpp"
 #include "platform/platform_ethernet.hpp"
 #include "platform/platform_logger.hpp"
+#include "servers/encoder_service.hpp"
 #include "servers/hello_service.hpp"
+#include "servers/imu_service.hpp"
 #include "servers/sdcard_service.hpp"
 #include "servers/sensor_service.hpp"
 #include "servers/tcp_service.hpp"
@@ -40,6 +42,7 @@ int app_Init() noexcept {
   }
 
   platform::logger().info("display boot screen ready");
+
   ret = platform::ethernet_init();
   if (ret < 0) {
     platform::logger().error("failed to init ethernet", ret);
@@ -81,6 +84,21 @@ int app_Init() noexcept {
     return ret;
   }
 
+  static servers::EncoderService encoder_service(platform::logger());
+  ret = encoder_service.run();
+  if (ret < 0) {
+    platform::logger().error("failed to start encoder service", ret);
+    return ret;
+  }
+
+  // static servers::ImuService imu_service(platform::logger());
+  // ret = imu_service.run();
+  // if (ret < 0) {
+  //   platform::logger().error("failed to start imu service", ret);
+  //   return ret;
+  // }
+
   return 0;
 }
+
 }  // namespace app

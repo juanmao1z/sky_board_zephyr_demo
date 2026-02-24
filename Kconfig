@@ -1,0 +1,3 @@
+mainmenu "Sky Board Zephyr Demo"
+
+source "Kconfig.zephyr"

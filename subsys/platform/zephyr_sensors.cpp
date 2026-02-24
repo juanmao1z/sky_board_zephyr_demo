@@ -380,7 +380,6 @@ SensorHub& sensor_hub() noexcept {
   if (aht_ret < 0 && aht_ret != -EALREADY) {
     /* ignore: 延迟到实际 init/read 时通过返回码暴露问题 */
   }
-
   return hub;
 }
 

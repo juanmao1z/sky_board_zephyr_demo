@@ -105,7 +105,6 @@ class SensorService {
    * @return 0 表示成功；负值表示失败。
    */
   int rebuild_cache_layout() noexcept;
-
   /** @brief 日志接口。 */
   platform::ILogger& log_;
   /** @brief 传感器管理中心。 */

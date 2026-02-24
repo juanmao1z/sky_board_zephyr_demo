@@ -11,6 +11,8 @@
 #include <zephyr/dt-bindings/input/input-event-codes.h>
 #include <zephyr/dt-bindings/mipi_dbi/mipi_dbi.h>
 #include <zephyr/dt-bindings/pwm/pwm.h>
+#include <zephyr/dt-bindings/sensor/icm42688.h>
+#include <zephyr/dt-bindings/sensor/qdec_stm32.h>
 
 / {
 	model = "lckfb_sky_board_stm32f407";
@@ -129,6 +131,7 @@
 		die-temp0 = &die_temp;
 		volt-sensor0 = &vref;
 		volt-sensor1 = &vbat;
+		qdec0 = &ec11_qdec;
 	};
 };
 
@@ -164,7 +167,7 @@
 &usart1 {
 	pinctrl-0 = <&usart1_tx_pa9 &usart1_rx_pa10>;
 	pinctrl-names = "default";
-	current-speed = <115200>;
+	current-speed = <921600>;
 	status = "okay";
 };
 
@@ -196,6 +199,26 @@
 	status = "okay";
 };
 
+&spi2 {
+	pinctrl-0 = <&spi2_sck_pb10 &spi2_miso_pc2 &spi2_mosi_pc3>;
+	pinctrl-names = "default";
+	cs-gpios = <&gpioe 7 GPIO_ACTIVE_LOW>;
+	status = "okay";
+
+	icm42688_sensor: icm42688@0 {
+		compatible = "invensense,icm42688", "invensense,icm4268x";
+		reg = <0>;
+		spi-max-frequency = <8000000>;
+		accel-pwr-mode = <ICM42688_DT_ACCEL_LN>;
+		accel-fs = <ICM42688_DT_ACCEL_FS_16>;
+		accel-odr = <ICM42688_DT_ACCEL_ODR_100>;
+		gyro-pwr-mode = <ICM42688_DT_GYRO_LN>;
+		gyro-fs = <ICM42688_DT_GYRO_FS_2000>;
+		gyro-odr = <ICM42688_DT_GYRO_ODR_100>;
+		status = "okay";
+	};
+};
+
 &sdmmc1 {
 	status = "okay";
 	pinctrl-0 = <&sdio_d0_pc8 &sdio_d1_pc9
@@ -215,6 +238,22 @@
 		status = "okay";
 		pinctrl-0 = <&tim10_ch1_pb8>;
 		pinctrl-names = "default";
+	};
+};
+
+&timers4 {
+	status = "okay";
+
+	ec11_qdec: qdec {
+		status = "okay";
+		pinctrl-0 = <&tim4_ch1_pd12 &tim4_ch2_pd13>;
+		pinctrl-names = "default";
+		/*
+		 * Most EC11 parts are 20 detents per mechanical turn.
+		 * Adjust this value if your encoder variant is different.
+		 */
+		st,counts-per-revolution = <20>;
+		st,input-filter-level = <FDIV32_N8>;
 	};
 };
 
