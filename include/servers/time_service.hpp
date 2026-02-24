@@ -1,6 +1,6 @@
 /**
  * @file time_service.hpp
- * @brief 北京时间获取服务声明：启动阶段通过 TCP/HTTP 获取时间并打印串口。
+ * @brief 北京时间同步服务声明：基于 SNTP 周期同步并写入 RTC。
  */
 
 #pragma once
@@ -14,8 +14,8 @@
 namespace servers {
 
 /**
- * @brief 北京时间获取服务。
- * @note 该服务在独立线程中运行，失败后延迟重试，最多尝试固定次数后退出。
+ * @brief 北京时间同步服务。
+ * @note 服务在独立线程中运行，网络就绪后执行 SNTP 校时，默认每 10 分钟同步一次。
  */
 class TimeService {
  public:
@@ -42,16 +42,16 @@ class TimeService {
   static constexpr size_t kStackSize = 3072;
   /** @brief 服务线程优先级。 */
   static constexpr int kPriority = K_LOWEST_APPLICATION_THREAD_PRIO;
-  /** @brief HTTP 时间源端口。 */
-  static constexpr uint16_t kHttpTimePort = 80U;
-  /** @brief HTTP 时间源固定 IP。 */
-  static constexpr const char* kHttpTimeIp = "1.1.1.1";
-  /** @brief 上电后等待 IPv4 就绪的最大时间（毫秒）。 */
-  static constexpr int64_t kTimeProbeWaitMs = 30000;
-  /** @brief 获取失败后的重试间隔（毫秒）。 */
-  static constexpr int64_t kRetryDelayMs = 10000;
-  /** @brief 最多获取尝试次数。 */
-  static constexpr uint8_t kMaxProbeAttempts = 3;
+  /** @brief SNTP 服务端域名。 */
+  static constexpr const char* kSntpServer = "ntp.aliyun.com";
+  /** @brief SNTP 单次查询超时（毫秒）。 */
+  static constexpr uint32_t kSntpTimeoutMs = 5000U;
+  /** @brief 周期同步间隔（毫秒）。 */
+  static constexpr int64_t kSyncPeriodMs = 10 * 60 * 1000;
+  /** @brief 失败重试间隔（毫秒）。 */
+  static constexpr int64_t kRetryDelayMs = 10 * 1000;
+  /** @brief 主循环空闲轮询间隔（毫秒）。 */
+  static constexpr int64_t kLoopSleepMs = 1000;
 
   /**
    * @brief 线程入口静态适配函数。
@@ -67,10 +67,10 @@ class TimeService {
   void threads() noexcept;
 
   /**
-   * @brief 在启动阶段尝试获取并打印北京时间。
-   * @note 仅在 IPv4 就绪后执行；失败会延迟重试，最多尝试 kMaxProbeAttempts 次。
+   * @brief 在条件满足时执行一次 SNTP 校时。
+   * @note 未到同步时刻或仍在重试冷却时直接返回，不阻塞线程。
    */
-  void maybe_probe_beijing_time_once() noexcept;
+  void maybe_sync_beijing_time() noexcept;
 
   /**
    * @brief 检查以太网接口是否已有可用 IPv4 地址。
@@ -79,29 +79,16 @@ class TimeService {
   bool is_ipv4_ready() const noexcept;
 
   /**
-   * @brief 通过 HTTP Date 头获取 UTC 时间。
-   * @param out_epoch_sec 输出 UTC epoch 秒。
+   * @brief 通过 SNTP 获取 UTC 时间。
+   * @param[out] out_epoch_sec 输出 UTC epoch 秒。
    * @return 0 表示成功；负值表示失败。
    */
-  int fetch_utc_epoch_from_http_date(time_t& out_epoch_sec) noexcept;
+  int fetch_utc_epoch_from_sntp(time_t& out_epoch_sec) const noexcept;
 
   /**
-   * @brief 从 HTTP 头中提取 Date 字段。
-   * @param headers HTTP 响应头字符串。
-   * @param out_date 输出 Date 字段内容缓存。
-   * @param out_date_len 输出缓存长度。
-   * @return 0 表示成功；负值表示失败。
+   * @brief 仅在首次成功校时后切换日志时间戳源到 RTC。
    */
-  int extract_http_date_header(const char* headers, char* out_date,
-                               size_t out_date_len) const noexcept;
-
-  /**
-   * @brief 把 RFC7231 Date 字符串解析为 UTC epoch 秒。
-   * @param date_value Date 字段值（如 "Tue, 18 Feb 2025 02:31:18 GMT"）。
-   * @param out_epoch_sec 输出 UTC epoch 秒。
-   * @return 0 表示成功；负值表示失败。
-   */
-  int parse_rfc7231_date_to_epoch(const char* date_value, time_t& out_epoch_sec) const noexcept;
+  void maybe_enable_rtc_log_timestamp() noexcept;
 
   /**
    * @brief 打印北京时间（UTC+8）。
@@ -128,14 +115,14 @@ class TimeService {
   atomic_t running_ = ATOMIC_INIT(0);
   /** @brief 停止请求标志：1 请求停止，0 继续运行。 */
   atomic_t stop_requested_ = ATOMIC_INIT(0);
-  /** @brief 时间探测是否已完成（成功或失败都视为完成）。 */
-  bool time_probe_done_ = false;
-  /** @brief 启动后时间探测截止时刻（毫秒），0 表示未初始化。 */
-  int64_t time_probe_deadline_ms_ = 0;
-  /** @brief 已执行的时间获取尝试次数。 */
-  uint8_t probe_attempt_count_ = 0;
-  /** @brief 下一次允许重试的时间戳（毫秒），0 表示立即可试。 */
+  /** @brief 下一次周期同步时间点（毫秒），0 表示立即可同步。 */
+  int64_t next_sync_due_ms_ = 0;
+  /** @brief 下一次失败重试时间点（毫秒），0 表示立即可重试。 */
   int64_t next_retry_after_ms_ = 0;
+  /** @brief 是否已切换日志时间戳为 RTC。 */
+  bool rtc_timestamp_enabled_ = false;
+  /** @brief 上一轮 IPv4 就绪状态，用于边沿日志。 */
+  bool last_ipv4_ready_ = false;
 };
 
 }  // namespace servers
