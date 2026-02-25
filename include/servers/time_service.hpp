@@ -37,6 +37,19 @@ class TimeService {
    */
   void stop() noexcept;
 
+  /**
+   * @brief 查询首次 SNTP+RTC 同步是否已完成。
+   * @return true 表示已完成；false 表示未完成。
+   */
+  bool is_first_sync_done() const noexcept;
+
+  /**
+   * @brief 等待首次 SNTP+RTC 同步完成。
+   * @param timeout_ms 超时时间（毫秒）。
+   * @return 0 表示成功；-ETIMEDOUT 表示超时；负值表示参数错误。
+   */
+  int wait_first_sync(int64_t timeout_ms) const noexcept;
+
  private:
   /** @brief 服务线程栈大小（字节）。 */
   static constexpr size_t kStackSize = 3072;
@@ -121,6 +134,8 @@ class TimeService {
   int64_t next_retry_after_ms_ = 0;
   /** @brief 是否已切换日志时间戳为 RTC。 */
   bool rtc_timestamp_enabled_ = false;
+  /** @brief 首次 SNTP+RTC 同步完成标志。 */
+  atomic_t first_sync_done_ = ATOMIC_INIT(0);
   /** @brief 上一轮 IPv4 就绪状态，用于边沿日志。 */
   bool last_ipv4_ready_ = false;
 };

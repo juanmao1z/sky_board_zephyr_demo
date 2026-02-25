@@ -3,13 +3,13 @@
  * @brief ICM42688 平台化实现：设备初始化与单次采样读取。
  */
 
-#include "platform/platform_imu.hpp"
-
 #include <errno.h>
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>
 #include <zephyr/drivers/sensor.h>
 #include <zephyr/kernel.h>
+
+#include "platform/platform_imu.hpp"
 
 namespace {
 

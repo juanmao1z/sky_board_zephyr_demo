@@ -45,6 +45,33 @@ void TimeService::threads() noexcept {
 }
 
 /**
+ * @brief 查询首次同步完成状态。
+ * @return true 表示已完成；false 表示未完成。
+ */
+bool TimeService::is_first_sync_done() const noexcept { return atomic_get(&first_sync_done_) != 0; }
+
+/**
+ * @brief 等待首次 SNTP+RTC 同步完成。
+ * @param timeout_ms 超时时间（毫秒）。
+ * @return 0 表示成功；-ETIMEDOUT 表示超时；负值表示参数错误。
+ */
+int TimeService::wait_first_sync(int64_t timeout_ms) const noexcept {
+  if (timeout_ms <= 0) {
+    return -EINVAL;
+  }
+
+  const int64_t deadline_ms = k_uptime_get() + timeout_ms;
+  while (k_uptime_get() < deadline_ms) {
+    if (is_first_sync_done()) {
+      return 0;
+    }
+    k_sleep(K_MSEC(200));
+  }
+
+  return -ETIMEDOUT;
+}
+
+/**
  * @brief 在满足条件时执行一次 SNTP 同步。
  * @note 成功后进入 10 分钟周期；失败后 10 秒重试。
  */
@@ -89,6 +116,7 @@ void TimeService::maybe_sync_beijing_time() noexcept {
   if (rtc_ret < 0) {
     log_.error("failed to write beijing time to rtc", rtc_ret);
   } else {
+    atomic_set(&first_sync_done_, 1);
     log_.info("[time] RTC updated with Beijing time");
     maybe_enable_rtc_log_timestamp();
   }
@@ -228,6 +256,7 @@ int TimeService::run() noexcept {
   next_sync_due_ms_ = 0;
   next_retry_after_ms_ = 0;
   rtc_timestamp_enabled_ = false;
+  atomic_set(&first_sync_done_, 0);
   last_ipv4_ready_ = false;
 
   thread_id_ = k_thread_create(&thread_, stack_, K_THREAD_STACK_SIZEOF(stack_), threadEntry, this,

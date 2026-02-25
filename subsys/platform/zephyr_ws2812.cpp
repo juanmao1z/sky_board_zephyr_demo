@@ -3,14 +3,15 @@
  * @brief 基于 STM32 TIM5 CH4 + DMA 的 WS2812 平台驱动实现.
  */
 
-#include "platform/platform_ws2812.hpp"
-
-#include <cstdint>
 #include <errno.h>
 #include <stm32f4xx_hal.h>
 #include <string.h>
 #include <zephyr/devicetree.h>
 #include <zephyr/kernel.h>
+
+#include <cstdint>
+
+#include "platform/platform_ws2812.hpp"
 
 namespace {
 
@@ -181,8 +182,8 @@ class ZephyrWs2812 final : public platform::IWs2812 {
   uint32_t pulse_0_ticks_ = 34U;
   uint32_t pulse_1_ticks_ = 67U;
 
-  TIM_HandleTypeDef htim5_ {};
-  DMA_HandleTypeDef hdma_tim5_ch4_ {};
+  TIM_HandleTypeDef htim5_{};
+  DMA_HandleTypeDef hdma_tim5_ch4_{};
   bool dma_linked_ = false;
 
   platform::Ws2812Rgb pixels_[kPixelStorage] = {};
@@ -193,9 +194,7 @@ class ZephyrWs2812 final : public platform::IWs2812 {
  * @brief 初始化驱动, 实际工作委托给 init_impl.
  * @return 0 表示成功, 负值表示失败.
  */
-int ZephyrWs2812::init() noexcept {
-  return init_impl();
-}
+int ZephyrWs2812::init() noexcept { return init_impl(); }
 
 /**
  * @brief 初始化 WS2812 底层外设资源.
@@ -219,7 +218,7 @@ int ZephyrWs2812::init_impl() noexcept {
   __HAL_RCC_TIM5_CLK_ENABLE();
   __HAL_RCC_DMA1_CLK_ENABLE();
 
-  GPIO_InitTypeDef gpio_init {};
+  GPIO_InitTypeDef gpio_init{};
   gpio_init.Pin = kDataPin;
   gpio_init.Mode = GPIO_MODE_AF_PP;
   gpio_init.Pull = GPIO_NOPULL;
@@ -246,7 +245,7 @@ int ZephyrWs2812::init_impl() noexcept {
     return -EIO;
   }
 
-  TIM_OC_InitTypeDef oc {};
+  TIM_OC_InitTypeDef oc{};
   oc.OCMode = TIM_OCMODE_PWM1;
   oc.Pulse = 0U;
   oc.OCPolarity = TIM_OCPOLARITY_HIGH;
@@ -370,13 +369,14 @@ int ZephyrWs2812::start_dma_and_wait_impl(const size_t symbol_count) noexcept {
     return -EINVAL;
   }
 
-  HAL_StatusTypeDef st =
-      HAL_TIM_PWM_Start_DMA(&htim5_, kTimerChannel, pulse_buffer_, static_cast<uint16_t>(symbol_count));
+  HAL_StatusTypeDef st = HAL_TIM_PWM_Start_DMA(&htim5_, kTimerChannel, pulse_buffer_,
+                                               static_cast<uint16_t>(symbol_count));
   if (st != HAL_OK) {
     /* 遇到 HAL 忙或异常时先强制停机, 再做一次短延迟重试. */
     force_stop_impl();
     k_busy_wait(kDmaRecoverWaitUs);
-    st = HAL_TIM_PWM_Start_DMA(&htim5_, kTimerChannel, pulse_buffer_, static_cast<uint16_t>(symbol_count));
+    st = HAL_TIM_PWM_Start_DMA(&htim5_, kTimerChannel, pulse_buffer_,
+                               static_cast<uint16_t>(symbol_count));
     if (st != HAL_OK) {
       return (st == HAL_BUSY) ? -EBUSY : -EIO;
     }
@@ -487,7 +487,8 @@ int ws2812_wheel_show(IWs2812& ws, const uint8_t phase) noexcept {
   }
 
   for (size_t i = 0U; i < count; ++i) {
-    const uint8_t p = static_cast<uint8_t>((static_cast<uint16_t>(phase) + (i * 256U / count)) & 0xFFU);
+    const uint8_t p =
+        static_cast<uint8_t>((static_cast<uint16_t>(phase) + (i * 256U / count)) & 0xFFU);
     const int set_ret = ws.set_pixel(i, ws2812_wheel(p));
     if (set_ret < 0) {
       return set_ret;

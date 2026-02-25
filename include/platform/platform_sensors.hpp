@@ -186,6 +186,7 @@ class SensorHub final {
    * @return 0 表示成功；负值表示失败。
    */
   int read_aht20_once(Aht20Sample& out) noexcept;
+
  private:
   /** @brief 已注册驱动槽位。 */
   struct DriverSlot {

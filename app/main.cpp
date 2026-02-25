@@ -3,10 +3,10 @@
  * @brief 应用主入口：把控制权交给 app 初始化流程。
  */
 
+#include <zephyr/kernel.h>
+
 #include "app/app_Init.hpp"
 #include "platform/platform_ws2812.hpp"
-
-#include <zephyr/kernel.h>
 
 /**
  * @brief 应用入口函数。
@@ -17,7 +17,6 @@ int main(void) {
   if (ret < 0) {
     return ret;
   }
-
   // 主线程彩虹流水灯: 每帧整体相位递增, 灯带颜色呈流动效果.
   platform::IWs2812& ws = platform::ws2812();
   (void)ws.set_global_brightness(255U);

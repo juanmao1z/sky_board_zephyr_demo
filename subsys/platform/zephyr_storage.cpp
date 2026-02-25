@@ -3,8 +3,6 @@
  * @brief 基于 Zephyr FATFS 的存储平台实现.
  */
 
-#include "platform/platform_storage.hpp"
-
 #include <errno.h>
 #include <ff.h>
 #include <stdint.h>
@@ -14,6 +12,7 @@
 #include <zephyr/storage/disk_access.h>
 
 #include "platform/platform_logger.hpp"
+#include "platform/platform_storage.hpp"
 
 namespace {
 
@@ -25,21 +24,24 @@ constexpr k_timeout_t kPowerSettleDelay = K_MSEC(220);
 class ZephyrStorage final : public platform::IStorage {
  public:
   int init() noexcept override;
-  int write_file(const char* path, const void* data, size_t len, bool append = false) noexcept override;
-  int read_file(const char* path, void* buffer, size_t buffer_size, size_t& out_len) noexcept override;
-  int enqueue_write(const char* path, const void* data, size_t len, bool append = false) noexcept override;
+  int write_file(const char* path, const void* data, size_t len,
+                 bool append = false) noexcept override;
+  int read_file(const char* path, void* buffer, size_t buffer_size,
+                size_t& out_len) noexcept override;
+  int enqueue_write(const char* path, const void* data, size_t len,
+                    bool append = false) noexcept override;
 
  private:
   int init_and_mount_locked() noexcept;
   bool is_ready_locked() const noexcept { return initialized_ && is_mounted_; }
 
   platform::ILogger& log_ = platform::logger();
-  FATFS fat_fs_ {};
-  fs_mount_t mount_ {};
+  FATFS fat_fs_{};
+  fs_mount_t mount_{};
   char sd_disk_name_[3] = {'S', 'D', '\0'};
   bool is_mounted_ = false;
   bool initialized_ = false;
-  struct k_mutex mutex_ {};
+  struct k_mutex mutex_{};
 };
 
 int ZephyrStorage::init_and_mount_locked() noexcept {
@@ -249,4 +251,3 @@ namespace platform {
 IStorage& storage() noexcept { return g_storage; }
 
 }  // namespace platform
-

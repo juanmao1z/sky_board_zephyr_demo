@@ -77,8 +77,8 @@ class SensorService {
   static constexpr int64_t kPersistPeriodMs = 5000;
   /** @brief 每个样本缓存槽位的最大字节数。 */
   static constexpr size_t kMaxSampleBytes = 64;
-  /** @brief 传感器快照文件路径。 */
-  static constexpr const char* kPersistFilePath = "/SD:/SENSOR.CSV";
+  /** @brief 传感器快照文件路径最大长度。 */
+  static constexpr size_t kPersistPathMaxLen = 96;
 
   /**
    * @brief 线程入口静态适配函数。
@@ -108,6 +108,11 @@ class SensorService {
    * @param now_ms 当前系统 uptime 毫秒。
    */
   void persist_snapshot_to_storage(int64_t now_ms) noexcept;
+  /**
+   * @brief 依据 RTC 北京时间生成本次上电使用的 CSV 文件名。
+   * @return 0 表示成功；负值表示失败。
+   */
+  int build_persist_file_path_from_rtc() noexcept;
   /**
    * @brief 查找指定类型样本缓存槽位下标。
    * @param type 传感器类型。
@@ -155,6 +160,8 @@ class SensorService {
   bool storage_header_written_ = false;
   /** @brief 当前运行周期内是否启用 SD 持久化。 */
   bool storage_persist_enabled_ = true;
+  /** @brief 当前运行周期使用的 CSV 文件路径。 */
+  char persist_file_path_[kPersistPathMaxLen] = {};
 };
 
 }  // namespace servers

@@ -33,4 +33,3 @@ int encoder_init() noexcept;
 int encoder_read_once(EncoderSample& out) noexcept;
 
 }  // namespace platform
-

@@ -8,10 +8,26 @@
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
+#include <zephyr/device.h>
+#include <zephyr/devicetree.h>
+#include <zephyr/drivers/rtc.h>
 
 #include "platform/platform_storage.hpp"
 
 namespace servers {
+
+/**
+ * @brief 读取 RTC 当前时间。
+ * @param[out] out 输出 RTC 时间结构体。
+ * @return 0 表示成功；负值表示失败。
+ */
+int read_rtc_beijing_time(struct rtc_time& out) noexcept {
+  const struct device* rtc_dev = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(rtc));
+  if (rtc_dev == nullptr || !device_is_ready(rtc_dev)) {
+    return -ENODEV;
+  }
+  return rtc_get_time(rtc_dev, &out);
+}
 
 /**
  * @brief 服务线程静态入口适配函数。
@@ -71,6 +87,31 @@ int SensorService::rebuild_cache_layout() noexcept {
     (void)memset(cache_[i].data, 0, sizeof(cache_[i].data));
   }
 
+  return 0;
+}
+
+/**
+ * @brief 根据 RTC 北京时间生成本轮落盘文件路径。
+ * @return 0 表示成功；负值表示失败。
+ */
+int SensorService::build_persist_file_path_from_rtc() noexcept {
+  struct rtc_time rtc_now = {};
+  const int ret = read_rtc_beijing_time(rtc_now);
+  if (ret < 0) {
+    return ret;
+  }
+
+  const int n = snprintf(persist_file_path_, sizeof(persist_file_path_),
+                         "/SD:/%04d%02d%02d_%02d%02d%02d_sensor.csv", rtc_now.tm_year + 1900,
+                         rtc_now.tm_mon + 1, rtc_now.tm_mday, rtc_now.tm_hour, rtc_now.tm_min,
+                         rtc_now.tm_sec);
+  if (n <= 0 || static_cast<size_t>(n) >= sizeof(persist_file_path_)) {
+    return -ENOSPC;
+  }
+
+  char msg[128] = {};
+  (void)snprintf(msg, sizeof(msg), "[sensor] persist file: %s", persist_file_path_);
+  log_.info(msg);
   return 0;
 }
 
@@ -153,8 +194,8 @@ void SensorService::maybe_log_snapshot(int64_t now_ms) noexcept {
           platform::Ina226Sample ina = {};
           (void)memcpy(&ina, sample, sizeof(ina));
           (void)snprintf(msg, sizeof(msg), "[sensor] INA226: V=%ldmV I=%ldmA P=%ldmW",
-                          static_cast<long>(ina.bus_mv), static_cast<long>(ina.current_ma),
-                          static_cast<long>(ina.power_mw));
+                         static_cast<long>(ina.bus_mv), static_cast<long>(ina.current_ma),
+                         static_cast<long>(ina.power_mw));
           log_.info(msg);
         }
         break;
@@ -203,6 +244,8 @@ void SensorService::maybe_persist_snapshot(const int64_t now_ms) noexcept {
  * @note 写失败后会关闭本轮持久化，避免反复阻塞。
  */
 void SensorService::persist_snapshot_to_storage(const int64_t now_ms) noexcept {
+  (void)now_ms;
+
   /* 步骤 1：检查持久化开关。 */
   if (!storage_persist_enabled_) {
     return;
@@ -243,12 +286,18 @@ void SensorService::persist_snapshot_to_storage(const int64_t now_ms) noexcept {
     return;
   }
 
+  if (persist_file_path_[0] == '\0') {
+    storage_persist_enabled_ = false;
+    log_.error("[sensor] persist file path not ready", -EINVAL);
+    return;
+  }
+
   /* 步骤 3：首次写入时补 CSV 表头。 */
   if (!storage_header_written_) {
     static constexpr char kHeader[] =
-        "uptime_ms,bus_mv,current_ma,power_mw,temp_mc,rh_mpermille\n";
-    const int header_ret = platform::storage().write_file(kPersistFilePath, kHeader,
-                                                          sizeof(kHeader) - 1U, true);
+        "beijing_time,bus_mv,current_ma,power_mw,temp_mc,rh_mpermille\n";
+    const int header_ret =
+        platform::storage().write_file(persist_file_path_, kHeader, sizeof(kHeader) - 1U, false);
     if (header_ret < 0) {
       ++storage_error_streak_;
       if (storage_error_streak_ == 1U || (storage_error_streak_ % 10U) == 0U) {
@@ -261,22 +310,38 @@ void SensorService::persist_snapshot_to_storage(const int64_t now_ms) noexcept {
     storage_header_written_ = true;
   }
 
-  /* 步骤 4：格式化一行 CSV 并追加写入。 */
+  /* 步骤 4：读取 RTC 北京时间并格式化一行 CSV。 */
+  struct rtc_time rtc_now = {};
+  const int rtc_ret = read_rtc_beijing_time(rtc_now);
+  if (rtc_ret < 0) {
+    ++storage_error_streak_;
+    if (storage_error_streak_ == 1U || (storage_error_streak_ % 10U) == 0U) {
+      log_.error("[sensor] rtc read failed, skip persist", rtc_ret);
+    }
+    return;
+  }
+
+  char beijing_time[80] = {};
+  (void)snprintf(beijing_time, sizeof(beijing_time), "%04d-%02d-%02d %02d:%02d:%02d",
+                 rtc_now.tm_year + 1900, rtc_now.tm_mon + 1, rtc_now.tm_mday, rtc_now.tm_hour,
+                 rtc_now.tm_min, rtc_now.tm_sec);
+
   char line[200] = {};
   const int32_t bus_mv = ina_valid ? ina.bus_mv : -1;
   const int32_t current_ma = ina_valid ? ina.current_ma : -1;
   const int32_t power_mw = ina_valid ? ina.power_mw : -1;
   const int32_t temp_mc = aht_valid ? aht.temp_mc : -1;
   const int32_t rh_mpermille = aht_valid ? aht.rh_mpermille : -1;
-  const int n = snprintf(line, sizeof(line), "%lld,%ld,%ld,%ld,%ld,%ld\n",
-                         static_cast<long long>(now_ms), static_cast<long>(bus_mv),
-                         static_cast<long>(current_ma), static_cast<long>(power_mw),
-                         static_cast<long>(temp_mc), static_cast<long>(rh_mpermille));
+  const int n = snprintf(line, sizeof(line), "%s,%ld,%ld,%ld,%ld,%ld\n", beijing_time,
+                         static_cast<long>(bus_mv), static_cast<long>(current_ma),
+                         static_cast<long>(power_mw), static_cast<long>(temp_mc),
+                         static_cast<long>(rh_mpermille));
   if (n <= 0 || static_cast<size_t>(n) >= sizeof(line)) {
     return;
   }
 
-  const int ret = platform::storage().write_file(kPersistFilePath, line, static_cast<size_t>(n), true);
+  const int ret =
+      platform::storage().write_file(persist_file_path_, line, static_cast<size_t>(n), true);
   if (ret < 0) {
     ++storage_error_streak_;
     if (storage_error_streak_ == 1U || (storage_error_streak_ % 10U) == 0U) {
@@ -286,7 +351,6 @@ void SensorService::persist_snapshot_to_storage(const int64_t now_ms) noexcept {
     log_.error("[sensor] sd persist disabled after sample write failure", ret);
     return;
   }
-  log_.info("[sdcard] sd write sample successed");
 
   storage_error_streak_ = 0U;
 }
@@ -336,6 +400,14 @@ int SensorService::run() noexcept {
   storage_error_streak_ = 0U;
   storage_header_written_ = false;
   storage_persist_enabled_ = true;
+  (void)memset(persist_file_path_, 0, sizeof(persist_file_path_));
+
+  ret = build_persist_file_path_from_rtc();
+  if (ret < 0) {
+    atomic_set(&running_, 0);
+    log_.error("failed to build sensor persist file name from rtc", ret);
+    return ret;
+  }
 
   thread_id_ = k_thread_create(&thread_, stack_, K_THREAD_STACK_SIZEOF(stack_), threadEntry, this,
                                nullptr, nullptr, kPriority, 0, K_NO_WAIT);

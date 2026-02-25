@@ -63,4 +63,3 @@ class IStorage {
 IStorage& storage() noexcept;
 
 }  // namespace platform
-

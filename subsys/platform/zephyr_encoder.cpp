@@ -3,13 +3,13 @@
  * @brief Zephyr QDEC platform adapter for EC11.
  */
 
-#include "platform/platform_encoder.hpp"
-
 #include <errno.h>
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>
 #include <zephyr/drivers/sensor.h>
 #include <zephyr/kernel.h>
+
+#include "platform/platform_encoder.hpp"
 
 namespace {
 
@@ -64,4 +64,3 @@ int encoder_read_once(EncoderSample& out) noexcept {
 }
 
 }  // namespace platform
-

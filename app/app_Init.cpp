@@ -61,7 +61,6 @@ int app_Init() noexcept {
     platform::logger().error("failed to start time service", ret);
     return ret;
   }
-
   static servers::HelloService hello_service(platform::logger());
   ret = hello_service.run();
   if (ret < 0) {
@@ -74,6 +73,13 @@ int app_Init() noexcept {
     platform::logger().error("failed to start tcp service", ret);
     return ret;
   }
+
+  ret = time_service.wait_first_sync(45000);
+  if (ret < 0) {
+    platform::logger().error("failed waiting first beijing rtc sync", ret);
+    return ret;
+  }
+  platform::logger().info("[time] first beijing rtc sync ready");
 
   ret = platform::storage().init();
   if (ret < 0) {

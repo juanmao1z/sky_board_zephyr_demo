@@ -147,9 +147,10 @@ void ImuService::threads() noexcept {
                                static_cast<int64_t>(1000 + kOnlineBiasAccelNormTolMg);
 
       const bool accel_still = (acc_norm_sq >= acc_low) && (acc_norm_sq <= acc_high);
-      const bool gyro_still = (abs_i32(sample_corrected.gyro_x_mdps) <= kOnlineBiasGyroStillThrMdps) &&
-                              (abs_i32(sample_corrected.gyro_y_mdps) <= kOnlineBiasGyroStillThrMdps) &&
-                              (abs_i32(sample_corrected.gyro_z_mdps) <= kOnlineBiasGyroStillThrMdps);
+      const bool gyro_still =
+          (abs_i32(sample_corrected.gyro_x_mdps) <= kOnlineBiasGyroStillThrMdps) &&
+          (abs_i32(sample_corrected.gyro_y_mdps) <= kOnlineBiasGyroStillThrMdps) &&
+          (abs_i32(sample_corrected.gyro_z_mdps) <= kOnlineBiasGyroStillThrMdps);
 
       if (accel_still && gyro_still) {
         ++still_streak_;
@@ -158,15 +159,12 @@ void ImuService::threads() noexcept {
           const int32_t dy = sample_raw.gyro_y_mdps - gyro_bias_y_mdps_;
           const int32_t dz = sample_raw.gyro_z_mdps - gyro_bias_z_mdps_;
 
-          gyro_bias_x_mdps_ +=
-              (dx >= 0) ? ((dx + (kOnlineBiasIirDiv / 2)) / kOnlineBiasIirDiv)
-                        : ((dx - (kOnlineBiasIirDiv / 2)) / kOnlineBiasIirDiv);
-          gyro_bias_y_mdps_ +=
-              (dy >= 0) ? ((dy + (kOnlineBiasIirDiv / 2)) / kOnlineBiasIirDiv)
-                        : ((dy - (kOnlineBiasIirDiv / 2)) / kOnlineBiasIirDiv);
-          gyro_bias_z_mdps_ +=
-              (dz >= 0) ? ((dz + (kOnlineBiasIirDiv / 2)) / kOnlineBiasIirDiv)
-                        : ((dz - (kOnlineBiasIirDiv / 2)) / kOnlineBiasIirDiv);
+          gyro_bias_x_mdps_ += (dx >= 0) ? ((dx + (kOnlineBiasIirDiv / 2)) / kOnlineBiasIirDiv)
+                                         : ((dx - (kOnlineBiasIirDiv / 2)) / kOnlineBiasIirDiv);
+          gyro_bias_y_mdps_ += (dy >= 0) ? ((dy + (kOnlineBiasIirDiv / 2)) / kOnlineBiasIirDiv)
+                                         : ((dy - (kOnlineBiasIirDiv / 2)) / kOnlineBiasIirDiv);
+          gyro_bias_z_mdps_ += (dz >= 0) ? ((dz + (kOnlineBiasIirDiv / 2)) / kOnlineBiasIirDiv)
+                                         : ((dz - (kOnlineBiasIirDiv / 2)) / kOnlineBiasIirDiv);
 
           ++online_bias_updates_;
 
@@ -201,14 +199,16 @@ void ImuService::threads() noexcept {
 
     /* 步骤 5：按配置打印样本，同时输出 raw 与 corrected 便于确认校准效果。 */
     if (kEnablePrint && ((sample_count % kPrintEveryNSamples) == 0U)) {
-      printk("[imu] A=(%ld,%ld,%ld)mg Graw=(%ld,%ld,%ld)mdps Gcorr=(%ld,%ld,%ld)mdps T=%ld.%03ldC\n",
-             static_cast<long>(sample_raw.accel_x_mg), static_cast<long>(sample_raw.accel_y_mg),
-             static_cast<long>(sample_raw.accel_z_mg), static_cast<long>(sample_raw.gyro_x_mdps),
-             static_cast<long>(sample_raw.gyro_y_mdps), static_cast<long>(sample_raw.gyro_z_mdps),
-             static_cast<long>(sample_corrected.gyro_x_mdps),
-             static_cast<long>(sample_corrected.gyro_y_mdps),
-             static_cast<long>(sample_corrected.gyro_z_mdps),
-             static_cast<long>(sample_raw.temp_mc / 1000), static_cast<long>(sample_raw.temp_mc % 1000));
+      printk(
+          "[imu] A=(%ld,%ld,%ld)mg Graw=(%ld,%ld,%ld)mdps Gcorr=(%ld,%ld,%ld)mdps T=%ld.%03ldC\n",
+          static_cast<long>(sample_raw.accel_x_mg), static_cast<long>(sample_raw.accel_y_mg),
+          static_cast<long>(sample_raw.accel_z_mg), static_cast<long>(sample_raw.gyro_x_mdps),
+          static_cast<long>(sample_raw.gyro_y_mdps), static_cast<long>(sample_raw.gyro_z_mdps),
+          static_cast<long>(sample_corrected.gyro_x_mdps),
+          static_cast<long>(sample_corrected.gyro_y_mdps),
+          static_cast<long>(sample_corrected.gyro_z_mdps),
+          static_cast<long>(sample_raw.temp_mc / 1000),
+          static_cast<long>(sample_raw.temp_mc % 1000));
     }
 
     k_sleep(K_MSEC(kSamplePeriodMs));
