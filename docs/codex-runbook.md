@@ -153,6 +153,12 @@ Get-ChildItem app,include,subsys,tests -Recurse -Include *.cpp,*.hpp -File | `
 1. 再执行 10.3 确认无格式违规。
 1. 最后执行 `west build` 做编译验证。
 
+## 10.5 C++ 注释规范
+
+- 统一规范文件: `docs/cpp-comment-standard.md`
+- 适用范围: `include/`, `app/`, `subsys/` 下的 C++ 代码文件.
+- 目标: 统一 `@file/@brief` 文件头, 函数级注释, 并发语义说明.
+
 ## 11. 常用请求模板
 
 ```text
@@ -185,6 +191,10 @@ Get-ChildItem app,include,subsys,tests -Recurse -Include *.cpp,*.hpp -File | `
 
 ```text
 按 docs/codex-runbook.md 执行文档格式化与 lint（docs:format + docs:lint）
+```
+
+```text
+按 docs/cpp-comment-standard.md 规范化本次改动涉及的 C++ 注释, 然后 build 验证
 ```
 
 ```text

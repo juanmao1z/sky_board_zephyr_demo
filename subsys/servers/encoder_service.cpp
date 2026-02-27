@@ -1,6 +1,6 @@
 /**
  * @file encoder_service.cpp
- * @brief EC11 encoder background service implementation.
+ * @brief EC11 编码器后台服务实现.
  */
 
 #include "servers/encoder_service.hpp"
@@ -13,7 +13,7 @@ namespace servers {
 namespace {
 
 /**
- * @brief Convert linear angle difference to circular difference in [-180, 180].
+ * @brief 将线性角度差转换为环形角度差[-180, 180].
  */
 int32_t circular_delta_deg(int32_t now_deg, int32_t prev_deg) noexcept {
   int32_t delta = now_deg - prev_deg;
@@ -27,10 +27,20 @@ int32_t circular_delta_deg(int32_t now_deg, int32_t prev_deg) noexcept {
 
 }  // namespace
 
+/**
+ * @brief 线程入口静态适配函数.
+ * @param p1 EncoderService 实例指针.
+ * @param p2 未使用.
+ * @param p3 未使用.
+ */
 void EncoderService::threadEntry(void* p1, void*, void*) {
   static_cast<EncoderService*>(p1)->threads();
 }
 
+/**
+ * @brief 编码器服务主线程.
+ * @note 周期采样编码器, 输出角度变化并维护累计计数.
+ */
 void EncoderService::threads() noexcept {
   log_.info("encoder service starting");
 
@@ -89,6 +99,9 @@ void EncoderService::threads() noexcept {
   log_.info("encoder service stopped");
 }
 
+/**
+ * @brief 请求停止编码器服务线程.
+ */
 void EncoderService::stop() noexcept {
   if (atomic_get(&running_) == 0) {
     return;
@@ -100,6 +113,10 @@ void EncoderService::stop() noexcept {
   }
 }
 
+/**
+ * @brief 启动编码器服务线程(幂等).
+ * @return 0 表示成功或已在运行. 负值表示失败.
+ */
 int EncoderService::run() noexcept {
   if (!atomic_cas(&running_, 0, 1)) {
     log_.info("encoder service already running");
@@ -133,6 +150,11 @@ int EncoderService::run() noexcept {
   return 0;
 }
 
+/**
+ * @brief 获取最近一次编码器样本.
+ * @param out 输出样本.
+ * @return 0 表示成功. -EAGAIN 表示暂无样本.
+ */
 int EncoderService::get_latest(platform::EncoderSample& out) noexcept {
   k_mutex_lock(&mutex_, K_FOREVER);
   if (!latest_valid_) {
@@ -144,6 +166,11 @@ int EncoderService::get_latest(platform::EncoderSample& out) noexcept {
   return 0;
 }
 
+/**
+ * @brief 获取累计编码器步进计数.
+ * @param out 输出计数.
+ * @return 0 表示成功.
+ */
 int EncoderService::get_count(int64_t& out) noexcept {
   k_mutex_lock(&mutex_, K_FOREVER);
   out = count_;

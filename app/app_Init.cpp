@@ -10,6 +10,7 @@
 #include "platform/platform_logger.hpp"
 #include "platform/platform_storage.hpp"
 #include "platform/platform_ws2812.hpp"
+#include "servers/button_service.hpp"
 #include "servers/encoder_service.hpp"
 #include "servers/hello_service.hpp"
 #include "servers/imu_service.hpp"
@@ -101,12 +102,19 @@ int app_Init() noexcept {
     return ret;
   }
 
-  static servers::ImuService imu_service(platform::logger());
-  ret = imu_service.run();
+  static servers::ButtonService button_service(platform::logger());
+  ret = button_service.run();
   if (ret < 0) {
-    platform::logger().error("failed to start imu service", ret);
+    platform::logger().error("failed to start button service", ret);
     return ret;
   }
+
+  // static servers::ImuService imu_service(platform::logger());
+  // ret = imu_service.run();
+  // if (ret < 0) {
+  //   platform::logger().error("failed to start imu service", ret);
+  //   return ret;
+  // }
   return 0;
 }
 

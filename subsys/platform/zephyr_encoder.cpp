@@ -1,6 +1,6 @@
 /**
  * @file zephyr_encoder.cpp
- * @brief Zephyr QDEC platform adapter for EC11.
+ * @brief Zephyr QDEC 平台适配实现: 面向 EC11 编码器.
  */
 
 #include <errno.h>
@@ -16,20 +16,24 @@ namespace {
 #define QDEC_NODE DT_ALIAS(qdec0)
 
 #if DT_NODE_HAS_STATUS(QDEC_NODE, okay)
-/** @brief QDEC sensor device instance from devicetree alias `qdec0`. */
+/** @brief 从 devicetree 别名 `qdec0` 获取的 QDEC 设备实例. */
 const struct device* g_qdec_dev = DEVICE_DT_GET(QDEC_NODE);
 #else
-/** @brief Null device when qdec0 alias is missing or disabled. */
+/** @brief 当 qdec0 缺失或禁用时, 设备指针为 nullptr. */
 const struct device* g_qdec_dev = nullptr;
 #endif
 
-/** @brief Device ready flag for idempotent initialization. */
+/** @brief 设备就绪标记, 用于幂等初始化. */
 bool g_ready = false;
 
 }  // namespace
 
 namespace platform {
 
+/**
+ * @brief 初始化编码器设备.
+ * @return 0 表示成功. 负值表示失败.
+ */
 int encoder_init() noexcept {
   if (g_ready) {
     return 0;
@@ -41,6 +45,11 @@ int encoder_init() noexcept {
   return 0;
 }
 
+/**
+ * @brief 读取一次编码器样本.
+ * @param out 输出样本.
+ * @return 0 表示成功. 负值表示失败.
+ */
 int encoder_read_once(EncoderSample& out) noexcept {
   int ret = encoder_init();
   if (ret < 0) {

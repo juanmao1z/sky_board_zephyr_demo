@@ -12,15 +12,19 @@
  * @brief 应用入口函数。
  * @return app 层初始化结果码，0 表示成功，负值表示失败。
  */
+uint8_t phase = 0U;
 int main(void) {
   const int ret = app::app_Init();
   if (ret < 0) {
     return ret;
   }
-  // 主线程彩虹流水灯: 每帧整体相位递增, 灯带颜色呈流动效果.
+
+  /**
+   * @brief 主线程彩虹流水灯循环.
+   * @note 每帧整体相位递增, 灯带颜色呈流动效果.
+   */
   platform::IWs2812& ws = platform::ws2812();
   (void)ws.set_global_brightness(255U);
-  uint8_t phase = 0U;
   while (true) {
     const size_t count = ws.size();
     if (count == 0U) {

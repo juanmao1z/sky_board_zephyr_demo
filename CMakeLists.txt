@@ -12,6 +12,7 @@ target_sources(app PRIVATE
   app/app_Init.cpp
   subsys/platform/font5x7.cpp
   subsys/platform/zephyr_backlight.cpp
+  subsys/platform/zephyr_button.cpp
   subsys/platform/zephyr_display.cpp
   subsys/platform/zephyr_encoder.cpp
   subsys/platform/zephyr_ethernet.cpp
@@ -19,6 +20,7 @@ target_sources(app PRIVATE
   subsys/platform/zephyr_storage.cpp
   subsys/platform/zephyr_sensors.cpp
   subsys/platform/zephyr_ws2812.cpp
+  subsys/servers/button_service.cpp
   subsys/servers/encoder_service.cpp
   subsys/servers/hello_service.cpp
   subsys/servers/imu_service.cpp

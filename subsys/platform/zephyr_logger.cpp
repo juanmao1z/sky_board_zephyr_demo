@@ -4,6 +4,8 @@
  */
 
 #include <errno.h>
+#include <stdarg.h>
+#include <stdio.h>
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>
 #include <zephyr/drivers/rtc.h>
@@ -16,6 +18,9 @@
 LOG_MODULE_REGISTER(sky_board_demo, LOG_LEVEL_INF);
 
 namespace {
+
+/** @brief 格式化日志临时缓冲区长度. */
+constexpr size_t kLogFormatBufferSize = 192U;
 
 /**
  * @brief 基于 Zephyr LOG 宏的日志实现。
@@ -34,6 +39,54 @@ class ZephyrLogger final : public platform::ILogger {
    * @param err 错误码。
    */
   void error(const char* msg, int err) override { LOG_ERR("%s err=%d", msg, err); }
+
+  /**
+   * @brief 输出 va_list 形式的信息级日志.
+   * @param fmt printf 风格格式串.
+   * @param args 可变参数列表.
+   */
+  void vinfof(const char* fmt, va_list args) override {
+    char msg[kLogFormatBufferSize] = {};
+    if (fmt == nullptr) {
+      LOG_INF("%s", "(null)");
+      return;
+    }
+
+    va_list args_copy;
+    va_copy(args_copy, args);
+    const int n = vsnprintf(msg, sizeof(msg), fmt, args_copy);
+    va_end(args_copy);
+
+    if (n < 0) {
+      LOG_INF("%s", "log format error");
+      return;
+    }
+    LOG_INF("%s", msg);
+  }
+
+  /**
+   * @brief 输出 va_list 形式的错误级日志.
+   * @param fmt printf 风格格式串.
+   * @param args 可变参数列表.
+   */
+  void verrorf(const char* fmt, va_list args) override {
+    char msg[kLogFormatBufferSize] = {};
+    if (fmt == nullptr) {
+      LOG_ERR("%s", "(null)");
+      return;
+    }
+
+    va_list args_copy;
+    va_copy(args_copy, args);
+    const int n = vsnprintf(msg, sizeof(msg), fmt, args_copy);
+    va_end(args_copy);
+
+    if (n < 0) {
+      LOG_ERR("%s", "log format error");
+      return;
+    }
+    LOG_ERR("%s", msg);
+  }
 };
 
 /** @brief 全局日志对象实例。 */

@@ -37,6 +37,7 @@
 
 	gpio_keys {
 		compatible = "gpio-keys";
+		debounce-interval-ms = <50>;
 		key1: button_1 {
 			label = "KEY1";
 			gpios = <&gpioa 0 GPIO_ACTIVE_HIGH>;

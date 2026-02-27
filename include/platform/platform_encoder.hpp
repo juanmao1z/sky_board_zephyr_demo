@@ -1,6 +1,6 @@
 /**
  * @file platform_encoder.hpp
- * @brief Platform encoder access interface for EC11 (QDEC).
+ * @brief 编码器平台接口: 封装 EC11 的 QDEC 单次采样访问.
  */
 
 #pragma once
@@ -10,25 +10,25 @@
 namespace platform {
 
 /**
- * @brief One encoder sample.
+ * @brief 单次编码器样本.
  */
 struct EncoderSample {
-  /** @brief Absolute position in degrees from driver reset point. */
+  /** @brief 自驱动复位点起算的绝对角度, 单位度. */
   int32_t position_deg = 0;
-  /** @brief Sample timestamp from system uptime in milliseconds. */
+  /** @brief 样本时间戳, 基于系统 uptime 毫秒. */
   int64_t ts_ms = 0;
 };
 
 /**
- * @brief Initialize encoder device (idempotent).
- * @return 0 on success; negative errno on failure.
+ * @brief 初始化编码器设备(幂等).
+ * @return 0 表示成功. 负值表示失败.
  */
 int encoder_init() noexcept;
 
 /**
- * @brief Fetch one encoder sample.
- * @param out Output sample.
- * @return 0 on success; negative errno on failure.
+ * @brief 读取一次编码器样本.
+ * @param out 输出样本.
+ * @return 0 表示成功. 负值表示失败.
  */
 int encoder_read_once(EncoderSample& out) noexcept;
 
