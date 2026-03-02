@@ -12,6 +12,7 @@ target_sources(app PRIVATE
   app/app_Init.cpp
   subsys/platform/font5x7.cpp
   subsys/platform/zephyr_backlight.cpp
+  subsys/platform/zephyr_buzzer.cpp
   subsys/platform/zephyr_button.cpp
   subsys/platform/zephyr_display.cpp
   subsys/platform/zephyr_encoder.cpp

@@ -7,7 +7,16 @@
 
 #include <errno.h>
 
+#include "platform/platform_buzzer.hpp"
+
 namespace servers {
+
+namespace {
+
+constexpr uint32_t kButtonBuzzerFreqHz = 2000U;
+constexpr uint8_t kButtonBuzzerDutyPercent = 45U;
+
+}  // namespace
 
 /**
  * @brief 默认按键事件回调.
@@ -33,8 +42,28 @@ void ButtonService::default_callback(platform::ButtonId id, const bool pressed,
                       static_cast<unsigned int>(static_cast<uint8_t>(id) + 1U),
                       pressed ? "down" : "up", static_cast<long long>(ts_ms));
 
+  platform::IBuzzer& buzzer = platform::buzzer();
   if (pressed) {
+    const int on_ret = buzzer.on(kButtonBuzzerFreqHz, kButtonBuzzerDutyPercent);
+    if (on_ret < 0) {
+      service->log_.error("failed to enable buzzer on key down", on_ret);
+    }
     return;
+  }
+
+  platform::ButtonState state = {};
+  const int state_ret = platform::button_get_state(state);
+  if (state_ret < 0) {
+    service->log_.error("failed to read button state for buzzer control", state_ret);
+    const int off_ret = buzzer.off();
+    if (off_ret < 0) {
+      service->log_.error("failed to disable buzzer after state read error", off_ret);
+    }
+  } else if (!state.key1_pressed && !state.key2_pressed && !state.key3_pressed) {
+    const int off_ret = buzzer.off();
+    if (off_ret < 0) {
+      service->log_.error("failed to disable buzzer on key up", off_ret);
+    }
   }
 
   switch (id) {

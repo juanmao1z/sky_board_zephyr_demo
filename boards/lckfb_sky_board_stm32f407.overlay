@@ -1,3 +1,5 @@
+#include <zephyr/dt-bindings/pwm/pwm.h>
+
 / {
 	ws2812_led0: ws2812_led0 {
 		compatible = "lckfb,ws2812-tim5-dma";
@@ -8,8 +10,17 @@
 		pixel-offset = <0>;
 	};
 
+	buzzer_pwm_group: buzzer_pwm_group {
+		compatible = "pwm-leds";
+		buzzer_pwm: buzzer_pwm {
+			pwms = <&pwm3 1 PWM_USEC(1000) PWM_POLARITY_NORMAL>;
+			label = "Buzzer PWM";
+		};
+	};
+
 	aliases {
 		ws2812-0 = &ws2812_led0;
+		buzzer-pwm = &buzzer_pwm;
 	};
 };
 
@@ -19,6 +30,18 @@
 	pwm5: pwm {
 		status = "okay";
 		pinctrl-0 = <&tim5_ch4_pa3>;
+		pinctrl-names = "default";
+	};
+};
+
+&timers3 {
+	status = "okay";
+	/* 84MHz / (83 + 1) = 1MHz, keeps PWM period cycles within 16-bit TIM3 range. */
+	st,prescaler = <83>;
+
+	pwm3: pwm {
+		status = "okay";
+		pinctrl-0 = <&tim3_ch1_pa6>;
 		pinctrl-names = "default";
 	};
 };

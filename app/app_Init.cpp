@@ -5,6 +5,7 @@
 
 #include "app/app_Init.hpp"
 
+#include "platform/platform_buzzer.hpp"
 #include "platform/platform_display.hpp"
 #include "platform/platform_ethernet.hpp"
 #include "platform/platform_logger.hpp"
@@ -45,6 +46,12 @@ int app_Init() noexcept {
   }
 
   platform::logger().info("display boot screen ready");
+
+  platform::IBuzzer& buzzer = platform::buzzer();
+  ret = buzzer.init();
+  if (ret < 0) {
+    platform::logger().error("failed to init buzzer", ret);
+  }
 
   ret = platform::ws2812().init();
   if (ret < 0) {
