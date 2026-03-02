@@ -6,9 +6,12 @@
 #include "app/app_Init.hpp"
 
 #include "platform/platform_buzzer.hpp"
+#include "platform/platform_boot_counter.hpp"
 #include "platform/platform_display.hpp"
 #include "platform/platform_ethernet.hpp"
+#include "platform/platform_ext_eeprom.hpp"
 #include "platform/platform_logger.hpp"
+#include "platform/platform_spi_flash.hpp"
 #include "platform/platform_storage.hpp"
 #include "platform/platform_ws2812.hpp"
 #include "servers/button_service.hpp"
@@ -69,12 +72,6 @@ int app_Init() noexcept {
     platform::logger().error("failed to start time service", ret);
     return ret;
   }
-  static servers::HelloService hello_service(platform::logger());
-  ret = hello_service.run();
-  if (ret < 0) {
-    platform::logger().error("failed to start hello service", ret);
-    return ret;
-  }
   static servers::TcpService tcp_service(platform::logger());
   ret = tcp_service.run();
   if (ret < 0) {
@@ -95,13 +92,27 @@ int app_Init() noexcept {
     return ret;
   }
 
-  static servers::SensorService sensor_service(platform::logger());
-  ret = sensor_service.run();
+  ret = platform::ext_eeprom().init();
   if (ret < 0) {
-    platform::logger().error("failed to start sensor service", ret);
-    return ret;
+    platform::logger().error("failed to init external eeprom", ret);
   }
 
+  ret = platform::spi_flash_ext().init();
+  if (ret < 0) {
+    platform::logger().error("failed to init external spi flash", ret);
+  }
+
+  platform::BootCounterStatus boot_status = {};
+  ret = platform::boot_counter().init_and_get_status(boot_status);
+  if (ret < 0) {
+    platform::logger().error("failed to init boot counter", ret);
+  } else {
+    platform::logger().infof("[bootcnt] count=%lu eeprom=%s flash=%s",
+                             static_cast<unsigned long>(boot_status.count),
+                             boot_status.eeprom_ready ? "ok" : "fail",
+                             boot_status.flash_ready ? "ok" : "fail");
+  }
+  
   static servers::EncoderService encoder_service(platform::logger());
   ret = encoder_service.run();
   if (ret < 0) {
@@ -115,6 +126,20 @@ int app_Init() noexcept {
     platform::logger().error("failed to start button service", ret);
     return ret;
   }
+  static servers::HelloService hello_service(platform::logger());
+  ret = hello_service.run();
+  if (ret < 0) {
+    platform::logger().error("failed to start hello service", ret);
+    return ret;
+  }
+  static servers::SensorService sensor_service(platform::logger());
+  ret = sensor_service.run();
+  if (ret < 0) {
+    platform::logger().error("failed to start sensor service", ret);
+    return ret;
+  }
+
+
 
   // static servers::ImuService imu_service(platform::logger());
   // ret = imu_service.run();

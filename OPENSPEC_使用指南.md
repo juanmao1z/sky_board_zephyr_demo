@@ -1,187 +1,106 @@
-﻿# OpenSpec 使用指南（快速上手）
+# OpenSpec 给 Codex 的可复制命令模板
 
-本文只覆盖“如何使用”，不包含介绍与安装内容。
+本文只写“可以直接粘贴给 Codex 的文本”。
 
-## 1. 初始化到你的项目
+## 0. 先创建一个新 change（openspec new）
 
-进入你的项目目录后执行：
+把下面整段发给 Codex：
 
-```bash
-openspec init
+```text
+请先创建一个新的 OpenSpec change：<CHANGE_NAME>
+
+要求：
+1) 运行 openspec new change <CHANGE_NAME>
+2) 运行 openspec status --change "<CHANGE_NAME>" --json
+3) 输出新建结果和下一步建议
 ```
 
-如果你要非交互式指定 AI 工具：
+手动命令示例：
 
 ```bash
-openspec init --tools codex,claude
+openspec new change add-boot-counter
 ```
 
-可用 `--tools` 值支持：
+## 1. 让 Codex 执行某个 change（最常用）
 
-- `all`
-- `none`
-- 或逗号分隔的工具列表（如 `codex,claude,cursor`）
+把下面整段发给 Codex：
 
-常用参数：
+```text
+请按 OpenSpec 工作流实现 change：<CHANGE_NAME>
 
-- `--tools <tools>`: 非交互配置 AI 工具
-- `--force`: 自动清理 legacy 文件（无提示）
-- `--profile <profile>`: 指定配置 profile
-
-## 2. 推荐工作流（从想法到归档）
-
-### 第一步：创建变更
-
-```bash
-openspec new change <change-name>
+要求：
+1) 先运行 openspec status --change "<CHANGE_NAME>" --json
+2) 再运行 openspec instructions apply --change "<CHANGE_NAME>" --json
+3) 读取 contextFiles
+4) 按 tasks 逐项实现，完成一项就把 tasks.md 对应项打勾
+5) 如果遇到阻塞，先汇报阻塞点和建议方案
+6) 最后汇报：本次完成项、剩余项、下一步建议
 ```
 
-示例：
+## 2. 不知道 change 名字时
 
-```bash
-openspec new change add-user-audit-log
+把下面整段发给 Codex：
+
+```text
+请先帮我选定要执行的 OpenSpec change：
+1) 运行 openspec list --json
+2) 如果只有一个 active change，就直接使用它
+3) 如果有多个，请列出候选并让我选择
+4) 选定后继续执行 apply 流程
 ```
 
-### 第二步：查看和管理变更
+## 3. 继续上次未做完的实现
 
-```bash
-openspec list
-openspec change show <change-name>
-openspec status --change <change-name>
+把下面整段发给 Codex：
+
+```text
+继续上次的 OpenSpec change：<CHANGE_NAME>
+
+要求：
+1) 运行 openspec status --change "<CHANGE_NAME>" --json
+2) 运行 openspec instructions apply --change "<CHANGE_NAME>" --json
+3) 只做未完成任务
+4) 每完成一项立刻更新 tasks.md 勾选状态
+5) 输出最新进度（完成/总数）
 ```
 
-### 第三步：校验规范
+## 4. 只做校验，不改代码
 
-```bash
-openspec validate --changes
-openspec validate --specs
-# 或全部校验
-openspec validate --all
+把下面整段发给 Codex：
+
+```text
+请仅做 OpenSpec 校验，不修改任何代码：
+1) openspec validate --all --strict
+2) 如果失败，按错误逐条解释原因和修复建议
+3) 给出可复制的修复命令
 ```
 
-常用增强参数：
+## 5. 归档已完成 change
 
-- `--strict`: 严格校验
-- `--json`: 机器可读输出
-- `--no-interactive`: 禁用交互
+把下面整段发给 Codex：
 
-### 第四步：归档已完成变更
+```text
+请归档 OpenSpec change：<CHANGE_NAME>
 
-```bash
-openspec archive <change-name>
+步骤：
+1) 先确认任务是否已全部完成（status + tasks）
+2) 运行 openspec archive "<CHANGE_NAME>" -y
+3) 输出归档结果和关键日志
 ```
 
-常用参数：
-
-- `-y, --yes`: 跳过确认
-- `--skip-specs`: 跳过 spec 更新（适合文档/工具类改动）
-- `--no-validate`: 跳过验证（不推荐）
-
-## 3. 常用命令速查
-
-### 基础命令
+## 6. CLI 原生命令速查（手动执行用）
 
 ```bash
-openspec --help
-openspec --version
-```
-
-### 项目初始化与更新
-
-```bash
-openspec init
-openspec update
-```
-
-- `openspec update --force`: 强制更新指令文件
-
-### 列表与查看
-
-```bash
-openspec list
-openspec list --specs
-openspec show <item-name>
-openspec spec list
-openspec spec show <spec-id>
-```
-
-### 变更管理
-
-```bash
-openspec new change <name>
-openspec change show <name>
-openspec change validate <name>
-openspec archive <name>
-```
-
-### 配置管理
-
-```bash
-openspec config path
-openspec config list
-openspec config get <key>
-openspec config set <key> <value>
-openspec config unset <key>
-openspec config profile
-```
-
-### 诊断与自动化
-
-```bash
-openspec status --change <id>
-openspec instructions --change <id>
-openspec schemas
-openspec validate --json
-```
-
-## 4. 一个最小可执行示例
-
-```bash
-# 1) 在项目内初始化
-openspec init --tools codex
-
-# 2) 新建一个变更
-openspec new change add-login-rate-limit
-
-# 3) 查看当前变更状态
-openspec status --change add-login-rate-limit
-
-# 4) 执行校验
-openspec validate --all
-
-# 5) 完成后归档
-openspec archive add-login-rate-limit -y
-```
-
-## 5. 常见问题
-
-### Q1：升级后项目里的指令没有同步
-
-在项目目录执行：
-
-```bash
-openspec update
-```
-
-### Q2：校验失败怎么排查
-
-优先执行：
-
-```bash
+openspec new change <CHANGE_NAME>
+openspec list --json
+openspec status --change "<CHANGE_NAME>" --json
+openspec instructions apply --change "<CHANGE_NAME>" --json
 openspec validate --all --strict
+openspec archive "<CHANGE_NAME>" -y
 ```
 
-再用：
+## 7. 说明
 
-```bash
-openspec show <item-name>
-```
-
-定位具体条目。
-
-## 6. 建议实践
-
-- 每个需求独立一个 change，避免混合多个目标。
-- 变更过程中频繁使用 `openspec status` 和 `openspec validate`。
-- 合并前至少执行一次 `openspec validate --all`。
-- 升级 CLI 后，在每个项目里跑一次 `openspec update`。
+- OpenSpec CLI 没有一级 `apply` 命令。
+- 正确写法是：`openspec instructions apply --change "<CHANGE_NAME>" --json`
+- `/opsx:apply` 这类写法属于外层代理快捷指令，不是 OpenSpec CLI 原生命令。

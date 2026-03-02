@@ -18,6 +18,9 @@ target_sources(app PRIVATE
   subsys/platform/zephyr_encoder.cpp
   subsys/platform/zephyr_ethernet.cpp
   subsys/platform/zephyr_imu.cpp
+  subsys/platform/zephyr_boot_counter.cpp
+  subsys/platform/zephyr_ext_eeprom.cpp
+  subsys/platform/zephyr_spi_flash.cpp
   subsys/platform/zephyr_storage.cpp
   subsys/platform/zephyr_sensors.cpp
   subsys/platform/zephyr_ws2812.cpp

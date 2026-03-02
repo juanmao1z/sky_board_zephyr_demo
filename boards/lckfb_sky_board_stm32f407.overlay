@@ -1,3 +1,4 @@
+#include <zephyr/dt-bindings/gpio/gpio.h>
 #include <zephyr/dt-bindings/pwm/pwm.h>
 
 / {
@@ -21,6 +22,8 @@
 	aliases {
 		ws2812-0 = &ws2812_led0;
 		buzzer-pwm = &buzzer_pwm;
+		eeprom-0 = &at24c02c_eeprom;
+		spi-flash0 = &w25q128jv;
 	};
 };
 
@@ -43,6 +46,31 @@
 		status = "okay";
 		pinctrl-0 = <&tim3_ch1_pa6>;
 		pinctrl-names = "default";
+	};
+};
+
+&i2c1 {
+	at24c02c_eeprom: eeprom@50 {
+		compatible = "atmel,at24c02", "atmel,at24";
+		reg = <0x50>;
+		size = <256>;
+		pagesize = <8>;
+		address-width = <8>;
+		timeout = <5>;
+		status = "okay";
+	};
+};
+
+&spi2 {
+	cs-gpios = <&gpioe 7 GPIO_ACTIVE_LOW>, <&gpioe 4 GPIO_ACTIVE_LOW>;
+
+	w25q128jv: spi-nor-flash@1 {
+		compatible = "jedec,spi-nor";
+		reg = <1>;
+		spi-max-frequency = <8000000>;
+		size = <134217728>;
+		jedec-id = [ef 40 18];
+		status = "okay";
 	};
 };
 
