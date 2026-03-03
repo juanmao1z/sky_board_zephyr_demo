@@ -16,34 +16,58 @@
 
 namespace {
 
+/** @brief FATFS 挂载点。 */
 constexpr char kMountPoint[] = "/SD:";
+/** @brief SD 初始化最大重试次数。 */
 constexpr int kMaxInitAttempts = 4;
+/** @brief 初始化重试间隔。 */
 constexpr k_timeout_t kRetryDelay = K_MSEC(300);
+/** @brief 上电后等待 SD 电源稳定时间。 */
 constexpr k_timeout_t kPowerSettleDelay = K_MSEC(220);
 
+/**
+ * @brief 基于 Zephyr FATFS 的存储实现。
+ */
 class ZephyrStorage final : public platform::IStorage {
  public:
+  /** @brief 初始化并挂载 SD 文件系统。 */
   int init() noexcept override;
+  /** @brief 写文件（支持覆盖或追加）。 */
   int write_file(const char* path, const void* data, size_t len,
                  bool append = false) noexcept override;
+  /** @brief 读文件到调用方缓冲区。 */
   int read_file(const char* path, void* buffer, size_t buffer_size,
                 size_t& out_len) noexcept override;
+  /** @brief 预留异步写接口，当前未实现。 */
   int enqueue_write(const char* path, const void* data, size_t len,
                     bool append = false) noexcept override;
 
  private:
+  /** @brief 在持锁状态下执行底层磁盘初始化与挂载。 */
   int init_and_mount_locked() noexcept;
+  /** @brief 在持锁状态下检查是否可读写。 */
   bool is_ready_locked() const noexcept { return initialized_ && is_mounted_; }
 
+  /** @brief 日志接口。 */
   platform::ILogger& log_ = platform::logger();
+  /** @brief FATFS 文件系统对象。 */
   FATFS fat_fs_{};
+  /** @brief Zephyr 挂载描述结构。 */
   fs_mount_t mount_{};
+  /** @brief SD 设备名（传给 disk_access_ioctl）。 */
   char sd_disk_name_[3] = {'S', 'D', '\0'};
+  /** @brief 挂载状态。 */
   bool is_mounted_ = false;
+  /** @brief 初始化状态。 */
   bool initialized_ = false;
+  /** @brief 互斥锁，保护挂载与文件访问流程。 */
   struct k_mutex mutex_{};
 };
 
+/**
+ * @brief 在持锁状态下完成 SD 设备初始化并挂载文件系统。
+ * @return 0 成功；负值失败。
+ */
 int ZephyrStorage::init_and_mount_locked() noexcept {
   if (is_mounted_) {
     return 0;
@@ -66,6 +90,10 @@ int ZephyrStorage::init_and_mount_locked() noexcept {
   return 0;
 }
 
+/**
+ * @brief 初始化 SD 存储并执行挂载（含重试）。
+ * @return 0 成功；负值失败。
+ */
 int ZephyrStorage::init() noexcept {
   int ret = k_mutex_lock(&mutex_, K_FOREVER);
   if (ret != 0) {
@@ -105,6 +133,14 @@ int ZephyrStorage::init() noexcept {
   return last_err;
 }
 
+/**
+ * @brief 向文件写入数据。
+ * @param path 目标文件路径。
+ * @param data 待写入数据。
+ * @param len 数据长度。
+ * @param append true 追加；false 覆盖重写。
+ * @return 0 成功；负值失败。
+ */
 int ZephyrStorage::write_file(const char* path, const void* data, const size_t len,
                               const bool append) noexcept {
   if (path == nullptr || path[0] == '\0') {
@@ -163,6 +199,14 @@ int ZephyrStorage::write_file(const char* path, const void* data, const size_t l
   return 0;
 }
 
+/**
+ * @brief 从文件读取数据到缓冲区。
+ * @param path 源文件路径。
+ * @param buffer 输出缓冲区。
+ * @param buffer_size 缓冲区大小。
+ * @param[out] out_len 实际读取字节数。
+ * @return 0 成功；负值失败。
+ */
 int ZephyrStorage::read_file(const char* path, void* buffer, const size_t buffer_size,
                              size_t& out_len) noexcept {
   out_len = 0U;
@@ -233,6 +277,10 @@ int ZephyrStorage::read_file(const char* path, void* buffer, const size_t buffer
   return 0;
 }
 
+/**
+ * @brief 异步写接口占位实现。
+ * @return 始终返回 -ENOTSUP。
+ */
 int ZephyrStorage::enqueue_write(const char* path, const void* data, const size_t len,
                                  const bool append) noexcept {
   (void)path;
@@ -242,12 +290,17 @@ int ZephyrStorage::enqueue_write(const char* path, const void* data, const size_
   return -ENOTSUP;
 }
 
+/** @brief 全局存储实例。 */
 ZephyrStorage g_storage;
 
 }  // namespace
 
 namespace platform {
 
+/**
+ * @brief 获取全局存储实例。
+ * @return IStorage 引用。
+ */
 IStorage& storage() noexcept { return g_storage; }
 
 }  // namespace platform

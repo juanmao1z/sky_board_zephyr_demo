@@ -1,6 +1,6 @@
 /**
  * @file time_service.hpp
- * @brief 北京时间同步服务声明：基于 SNTP 周期同步并写入 RTC。
+ * @brief 北京时间同步服务声明：优先使用外部 RTC，异常时通过 SNTP 同步并写入 RTC。
  */
 
 #pragma once
@@ -15,7 +15,8 @@ namespace servers {
 
 /**
  * @brief 北京时间同步服务。
- * @note 服务在独立线程中运行，网络就绪后执行 SNTP 校时，默认每 10 分钟同步一次。
+ * @note 服务在独立线程中运行，优先使用外部 RTC；外部 RTC 健康后会结束同步线程。
+ * @note 当外部 RTC 异常时执行 SNTP 校时并写入内部+外部 RTC。
  */
 class TimeService {
  public:
@@ -38,13 +39,13 @@ class TimeService {
   void stop() noexcept;
 
   /**
-   * @brief 查询首次 SNTP+RTC 同步是否已完成。
+   * @brief 查询首次 RTC 时间源是否已就绪。
    * @return true 表示已完成；false 表示未完成。
    */
   bool is_first_sync_done() const noexcept;
 
   /**
-   * @brief 等待首次 SNTP+RTC 同步完成。
+   * @brief 等待首次 RTC 时间源就绪。
    * @param timeout_ms 超时时间（毫秒）。
    * @return 0 表示成功；-ETIMEDOUT 表示超时；负值表示参数错误。
    */
@@ -134,10 +135,12 @@ class TimeService {
   int64_t next_retry_after_ms_ = 0;
   /** @brief 是否已切换日志时间戳为 RTC。 */
   bool rtc_timestamp_enabled_ = false;
-  /** @brief 首次 SNTP+RTC 同步完成标志。 */
+  /** @brief 首次 RTC 时间源就绪标志。 */
   atomic_t first_sync_done_ = ATOMIC_INIT(0);
   /** @brief 上一轮 IPv4 就绪状态，用于边沿日志。 */
   bool last_ipv4_ready_ = false;
+  /** @brief 上一轮外部 RTC 健康状态，用于边沿日志。 */
+  bool last_external_rtc_healthy_ = false;
 };
 
 }  // namespace servers

@@ -6,14 +6,13 @@
 #include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
-#include <zephyr/device.h>
-#include <zephyr/devicetree.h>
 #include <zephyr/drivers/rtc.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/logging/log_ctrl.h>
 
 #include "platform/platform_logger.hpp"
+#include "platform/platform_rtc.hpp"
 
 LOG_MODULE_REGISTER(sky_board_demo, LOG_LEVEL_INF);
 
@@ -91,20 +90,14 @@ class ZephyrLogger final : public platform::ILogger {
 
 /** @brief 全局日志对象实例。 */
 ZephyrLogger g_logger;
-/** @brief RTC 设备句柄（启用 RTC 时间戳后有效）。 */
-const struct device* g_rtc_dev = nullptr;
 
 /**
  * @brief RTC 时间戳回调（返回当日毫秒数）。
  * @return 日志时间戳。
  */
 log_timestamp_t rtc_timestamp_getter() {
-  if (g_rtc_dev == nullptr || !device_is_ready(g_rtc_dev)) {
-    return k_uptime_get_32();
-  }
-
   struct rtc_time rtc_tm = {};
-  if (rtc_get_time(g_rtc_dev, &rtc_tm) < 0) {
+  if (platform::rtc_get_time_best_effort(rtc_tm) < 0) {
     return k_uptime_get_32();
   }
 
@@ -125,13 +118,15 @@ namespace platform {
  */
 ILogger& logger() { return g_logger; }
 
+/**
+ * @brief 启用 RTC 时间戳回调作为日志时间基准。
+ * @return 0 成功；负值失败。
+ */
 int logger_enable_rtc_timestamp() {
-  const struct device* rtc_dev = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(rtc));
-  if (rtc_dev == nullptr || !device_is_ready(rtc_dev)) {
+  if (preferred_rtc_device() == nullptr) {
     return -ENODEV;
   }
 
-  g_rtc_dev = rtc_dev;
   return log_set_timestamp_func(rtc_timestamp_getter, 1000U);
 }
 

@@ -33,6 +33,6 @@ int main(void) {
     }
     (void)platform::ws2812_wheel_show(ws, phase);
     ++phase;
-    k_sleep(K_MSEC(2));
+    k_sleep(K_MSEC(10));
   }
 }

@@ -54,6 +54,11 @@ constexpr uint8_t kFontTable[][5] = {
 
 namespace platform::font5x7 {
 
+/**
+ * @brief 根据 ASCII 字符返回 5x7 字模数据指针。
+ * @param c 输入字符。
+ * @return 对应字符的列数据指针；超出范围时返回 '?' 字模。
+ */
 const uint8_t* glyph(char c) noexcept {
   uint8_t uc = static_cast<uint8_t>(c);
   if (uc < kAsciiFirst || uc > kAsciiLast) {

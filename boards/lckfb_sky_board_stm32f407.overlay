@@ -24,6 +24,8 @@
 		buzzer-pwm = &buzzer_pwm;
 		eeprom-0 = &at24c02c_eeprom;
 		spi-flash0 = &w25q128jv;
+		gpio-expander-0 = &pca9555_ioexp;
+		rtc-external = &sd3078_rtc;
 	};
 };
 
@@ -57,6 +59,21 @@
 		pagesize = <8>;
 		address-width = <8>;
 		timeout = <5>;
+		status = "okay";
+	};
+
+	pca9555_ioexp: gpio_expander@20 {
+		compatible = "nxp,pca9555";
+		reg = <0x20>;
+		gpio-controller;
+		#gpio-cells = <2>;
+		ngpios = <16>;
+		status = "okay";
+	};
+
+	sd3078_rtc: rtc@32 {
+		compatible = "maxim,ds1307";
+		reg = <0x32>;
 		status = "okay";
 	};
 };

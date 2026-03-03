@@ -13,6 +13,7 @@
 #include <zephyr/drivers/rtc.h>
 
 #include "platform/platform_storage.hpp"
+#include "platform/platform_rtc.hpp"
 
 namespace servers {
 
@@ -22,11 +23,7 @@ namespace servers {
  * @return 0 表示成功；负值表示失败。
  */
 int read_rtc_beijing_time(struct rtc_time& out) noexcept {
-  const struct device* rtc_dev = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(rtc));
-  if (rtc_dev == nullptr || !device_is_ready(rtc_dev)) {
-    return -ENODEV;
-  }
-  return rtc_get_time(rtc_dev, &out);
+  return platform::rtc_get_time_best_effort(out);
 }
 
 /**

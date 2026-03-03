@@ -20,6 +20,7 @@ target_sources(app PRIVATE
   subsys/platform/zephyr_imu.cpp
   subsys/platform/zephyr_boot_counter.cpp
   subsys/platform/zephyr_ext_eeprom.cpp
+  subsys/platform/zephyr_pca9555.cpp
   subsys/platform/zephyr_spi_flash.cpp
   subsys/platform/zephyr_storage.cpp
   subsys/platform/zephyr_sensors.cpp
@@ -32,6 +33,7 @@ target_sources(app PRIVATE
   subsys/servers/time_service.cpp
   subsys/servers/tcp_service.cpp
   subsys/platform/zephyr_logger.cpp
+  subsys/platform/zephyr_rtc.cpp
 )
 
 target_compile_options(app PRIVATE

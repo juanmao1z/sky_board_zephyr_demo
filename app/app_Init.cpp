@@ -11,6 +11,7 @@
 #include "platform/platform_ethernet.hpp"
 #include "platform/platform_ext_eeprom.hpp"
 #include "platform/platform_logger.hpp"
+#include "platform/platform_pca9555.hpp"
 #include "platform/platform_spi_flash.hpp"
 #include "platform/platform_storage.hpp"
 #include "platform/platform_ws2812.hpp"
@@ -100,6 +101,19 @@ int app_Init() noexcept {
   ret = platform::spi_flash_ext().init();
   if (ret < 0) {
     platform::logger().error("failed to init external spi flash", ret);
+  }
+
+  ret = platform::pca9555().init();
+  if (ret < 0) {
+    platform::logger().error("failed to init pca9555", ret);
+  } else {
+    uint8_t dipsw_mask = 0U;
+    ret = platform::pca9555().read_dipsw(dipsw_mask);
+    if (ret < 0) {
+      platform::logger().error("failed to read pca9555 dipsw", ret);
+    } else {
+      platform::logger().infof("[pca9555] dipsw=0x%02X", static_cast<unsigned int>(dipsw_mask));
+    }
   }
 
   platform::BootCounterStatus boot_status = {};

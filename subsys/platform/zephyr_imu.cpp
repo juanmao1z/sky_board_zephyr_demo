@@ -47,6 +47,10 @@ int32_t rad_per_sec_to_mdps(const struct sensor_value& v) {
 
 namespace platform {
 
+/**
+ * @brief 初始化 ICM42688 设备（幂等）。
+ * @return 0 成功；负值失败。
+ */
 int imu_init() noexcept {
   if (g_ready) {
     return 0;
@@ -58,6 +62,11 @@ int imu_init() noexcept {
   return 0;
 }
 
+/**
+ * @brief 执行一次 ICM42688 采样并转换为工程内部单位。
+ * @param[out] out 输出 IMU 样本。
+ * @return 0 成功；负值失败。
+ */
 int imu_read_once(ImuSample& out) noexcept {
   int ret = imu_init();
   if (ret < 0) {

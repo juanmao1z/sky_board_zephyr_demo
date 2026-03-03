@@ -18,18 +18,30 @@
 
 namespace {
 
+/** @brief 记录魔数（'BOOT'）。 */
 constexpr uint32_t kBootCounterMagic = 0x424F4F54U;  // 'BOOT'
+/** @brief 记录版本号。 */
 constexpr uint16_t kBootCounterVersion = 1U;
 
+/** @brief 单条上电记录长度（字节）。 */
 constexpr size_t kRecordSize = 32U;
+/** @brief EEPROM 记录槽位数。 */
 constexpr size_t kEepromSlotCount = 2U;
+/** @brief EEPROM 槽位 0 起始偏移。 */
 constexpr size_t kEepromSlot0Offset = 0U;
+/** @brief EEPROM 槽位 1 起始偏移。 */
 constexpr size_t kEepromSlot1Offset = 32U;
+/** @brief EEPROM 预留区域总长度。 */
 constexpr size_t kEepromReservedBytes = 64U;
 
+/** @brief Flash 末尾用于计数记录的扇区大小。 */
 constexpr size_t kFlashSectorSize = 4096U;
+/** @brief Flash 扇区可容纳的记录槽位数。 */
 constexpr size_t kFlashSlotCount = kFlashSectorSize / kRecordSize;
 
+/**
+ * @brief 上电计数持久化记录格式。
+ */
 struct BootCounterRecord {
   uint32_t magic = kBootCounterMagic;
   uint16_t version = kBootCounterVersion;
@@ -42,6 +54,9 @@ struct BootCounterRecord {
 
 static_assert(sizeof(BootCounterRecord) == kRecordSize, "record size must be 32 bytes");
 
+/**
+ * @brief 扫描结果：记录最新有效槽位与首个空槽位。
+ */
 struct ScanResult {
   bool has_valid = false;
   int latest_slot = -1;
@@ -49,12 +64,24 @@ struct ScanResult {
   int first_empty_slot = -1;
 };
 
+/** @brief 上电计数模块全局互斥锁。 */
 K_MUTEX_DEFINE(g_boot_counter_mutex);
 
+/**
+ * @brief 计算记录头部 CRC32（不包含 `crc32` 字段本身）。
+ * @param record 待计算记录。
+ * @return CRC32 值。
+ */
 uint32_t record_crc32(const BootCounterRecord& record) noexcept {
   return crc32_ieee(reinterpret_cast<const uint8_t*>(&record), offsetof(BootCounterRecord, crc32));
 }
 
+/**
+ * @brief 判断缓冲区是否全为 0xFF（空白擦除态）。
+ * @param data 缓冲区指针。
+ * @param len 缓冲区长度。
+ * @return true 全 FF；false 非全 FF。
+ */
 bool is_all_ff(const uint8_t* data, const size_t len) noexcept {
   for (size_t i = 0U; i < len; ++i) {
     if (data[i] != 0xFFU) {
@@ -64,6 +91,11 @@ bool is_all_ff(const uint8_t* data, const size_t len) noexcept {
   return true;
 }
 
+/**
+ * @brief 校验记录魔数/版本与 CRC。
+ * @param record 待校验记录。
+ * @return true 有效；false 无效。
+ */
 bool is_record_valid(const BootCounterRecord& record) noexcept {
   if (record.magic != kBootCounterMagic || record.version != kBootCounterVersion) {
     return false;
@@ -71,6 +103,12 @@ bool is_record_valid(const BootCounterRecord& record) noexcept {
   return record.crc32 == record_crc32(record);
 }
 
+/**
+ * @brief 生成一条新的上电计数记录并写入 CRC。
+ * @param seq 记录序号。
+ * @param count 上电计数值。
+ * @return 新构造记录。
+ */
 BootCounterRecord make_record(const uint32_t seq, const uint32_t count) noexcept {
   BootCounterRecord record{};
   record.magic = kBootCounterMagic;
@@ -82,23 +120,41 @@ BootCounterRecord make_record(const uint32_t seq, const uint32_t count) noexcept
   return record;
 }
 
+/**
+ * @brief 上电计数实现：EEPROM + SPI Flash 双后端冗余。
+ */
 class ZephyrBootCounter final : public platform::IBootCounter {
  public:
+  /** @brief 初始化并返回当前上电计数状态。 */
   int init_and_get_status(platform::BootCounterStatus& out) noexcept override;
 
  private:
+  /** @brief 扫描 EEPROM 记录槽位。 */
   int scan_eeprom(ScanResult& out) noexcept;
+  /** @brief 扫描 Flash 保留扇区记录槽位。 */
   int scan_flash(ScanResult& out, off_t& sector_base) noexcept;
+  /** @brief 追加写入 EEPROM 下一槽位并回读校验。 */
   int update_eeprom(const BootCounterRecord& record, int latest_slot) noexcept;
+  /** @brief 追加写入 Flash 扇区并回读校验（满时先擦除）。 */
   int update_flash(const BootCounterRecord& record, const ScanResult& scan, off_t sector_base) noexcept;
 
+  /** @brief 日志接口。 */
   platform::ILogger& log_ = platform::logger();
+  /** @brief 初始化完成标记。 */
   bool initialized_ = false;
+  /** @brief EEPROM 后端可用标记。 */
   bool eeprom_ready_ = false;
+  /** @brief Flash 后端可用标记。 */
   bool flash_ready_ = false;
+  /** @brief 当前上电计数值。 */
   uint32_t current_count_ = 0U;
 };
 
+/**
+ * @brief 扫描 EEPROM 槽位并提取最新有效记录。
+ * @param[out] out 扫描输出。
+ * @return 0 成功；负值失败。
+ */
 int ZephyrBootCounter::scan_eeprom(ScanResult& out) noexcept {
   out = {};
 
@@ -145,6 +201,12 @@ int ZephyrBootCounter::scan_eeprom(ScanResult& out) noexcept {
   return 0;
 }
 
+/**
+ * @brief 扫描 Flash 保留扇区并提取最新有效记录。
+ * @param[out] out 扫描输出。
+ * @param[out] sector_base 保留扇区基地址。
+ * @return 0 成功；负值失败。
+ */
 int ZephyrBootCounter::scan_flash(ScanResult& out, off_t& sector_base) noexcept {
   out = {};
   sector_base = 0;
@@ -193,6 +255,12 @@ int ZephyrBootCounter::scan_flash(ScanResult& out, off_t& sector_base) noexcept 
   return 0;
 }
 
+/**
+ * @brief 写入 EEPROM 下一槽位并执行回读一致性校验。
+ * @param record 新记录。
+ * @param latest_slot 当前最新槽位。
+ * @return 0 成功；负值失败。
+ */
 int ZephyrBootCounter::update_eeprom(const BootCounterRecord& record, const int latest_slot) noexcept {
   const int next_slot = (latest_slot < 0) ? 0 : ((latest_slot + 1) % static_cast<int>(kEepromSlotCount));
   const size_t offset = (next_slot == 0) ? kEepromSlot0Offset : kEepromSlot1Offset;
@@ -213,6 +281,13 @@ int ZephyrBootCounter::update_eeprom(const BootCounterRecord& record, const int 
   return 0;
 }
 
+/**
+ * @brief 写入 Flash 下一槽位并执行回读一致性校验。
+ * @param record 新记录。
+ * @param scan 当前扫描结果。
+ * @param sector_base 保留扇区基地址。
+ * @return 0 成功；负值失败。
+ */
 int ZephyrBootCounter::update_flash(const BootCounterRecord& record, const ScanResult& scan,
                                     const off_t sector_base) noexcept {
   int target_slot = scan.first_empty_slot;
@@ -243,6 +318,11 @@ int ZephyrBootCounter::update_flash(const BootCounterRecord& record, const ScanR
   return 0;
 }
 
+/**
+ * @brief 初始化上电计数并写入本次启动记录。
+ * @param[out] out 输出当前计数与后端可用状态。
+ * @return 0 表示流程完成（即使后端全部不可用也返回 0，并在 out 中体现）。
+ */
 int ZephyrBootCounter::init_and_get_status(platform::BootCounterStatus& out) noexcept {
   int ret = k_mutex_lock(&g_boot_counter_mutex, K_FOREVER);
   if (ret != 0) {
@@ -345,12 +425,17 @@ int ZephyrBootCounter::init_and_get_status(platform::BootCounterStatus& out) noe
   return 0;
 }
 
+/** @brief 全局上电计数实例。 */
 ZephyrBootCounter g_boot_counter;
 
 }  // namespace
 
 namespace platform {
 
+/**
+ * @brief 获取全局上电计数实例。
+ * @return IBootCounter 引用。
+ */
 IBootCounter& boot_counter() noexcept { return g_boot_counter; }
 
 }  // namespace platform

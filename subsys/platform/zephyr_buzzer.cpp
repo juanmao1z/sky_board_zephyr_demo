@@ -79,6 +79,10 @@ class ZephyrBuzzer final : public platform::IBuzzer {
 const pwm_dt_spec ZephyrBuzzer::buzzer_pwm_ = PWM_DT_SPEC_GET(BUZZER_PWM_NODE);
 #endif
 
+/**
+ * @brief 初始化蜂鸣器并执行一次上电提示音。
+ * @return 0 成功；负值失败。
+ */
 int ZephyrBuzzer::init() noexcept {
   if (initialized_) {
     return 0;
@@ -117,6 +121,12 @@ int ZephyrBuzzer::init() noexcept {
 #endif
 }
 
+/**
+ * @brief 开启蜂鸣器输出。
+ * @param freq_hz 频率（Hz）。
+ * @param duty_percent 占空比（%）。
+ * @return 0 成功；负值失败。
+ */
 int ZephyrBuzzer::on(const uint32_t freq_hz, const uint8_t duty_percent) noexcept {
 #if DT_NODE_HAS_STATUS(BUZZER_PWM_NODE, okay)
   const int init_ret = init();
@@ -153,6 +163,10 @@ int ZephyrBuzzer::on(const uint32_t freq_hz, const uint8_t duty_percent) noexcep
 #endif
 }
 
+/**
+ * @brief 关闭蜂鸣器输出。
+ * @return 0 成功；负值失败。
+ */
 int ZephyrBuzzer::off() noexcept {
 #if DT_NODE_HAS_STATUS(BUZZER_PWM_NODE, okay)
   const int init_ret = init();
@@ -171,6 +185,10 @@ int ZephyrBuzzer::off() noexcept {
 }
 
 #if DT_NODE_HAS_STATUS(BUZZER_PWM_NODE, okay)
+/**
+ * @brief 直接将 PWM 脉宽设置为 0，实现安全静音。
+ * @return 0 成功；负值失败。
+ */
 int ZephyrBuzzer::force_off_impl() noexcept {
   const uint32_t period_ns = (buzzer_pwm_.period == 0U) ? kOffFallbackPeriodNs : buzzer_pwm_.period;
   const int ret = pwm_set_dt(&buzzer_pwm_, period_ns, 0U);

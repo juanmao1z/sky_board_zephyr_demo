@@ -1,6 +1,6 @@
 /**
  * @file time_service.cpp
- * @brief 北京时间同步服务实现：基于 SNTP 周期获取 UTC 并写入 RTC。
+ * @brief 北京时间同步服务实现：优先使用外部 RTC，异常时通过 SNTP 回退内部 RTC。
  */
 
 #include "servers/time_service.hpp"
@@ -16,6 +16,7 @@
 #include <zephyr/net/sntp.h>
 
 #include "platform/platform_logger.hpp"
+#include "platform/platform_rtc.hpp"
 
 namespace servers {
 
@@ -36,6 +37,9 @@ void TimeService::threads() noexcept {
 
   while (atomic_get(&stop_requested_) == 0) {
     maybe_sync_beijing_time();
+    if (atomic_get(&stop_requested_) != 0) {
+      break;
+    }
     k_sleep(K_MSEC(kLoopSleepMs));
   }
 
@@ -77,6 +81,26 @@ int TimeService::wait_first_sync(int64_t timeout_ms) const noexcept {
  */
 void TimeService::maybe_sync_beijing_time() noexcept {
   const int64_t now_ms = k_uptime_get();
+
+  struct rtc_time external_rtc_tm = {};
+  const int external_ret = platform::rtc_get_time_external(external_rtc_tm);
+  if (external_ret == 0) {
+    if (!last_external_rtc_healthy_) {
+      log_.info("[time] external rtc healthy, using external rtc");
+      last_external_rtc_healthy_ = true;
+    }
+    next_retry_after_ms_ = 0;
+    atomic_set(&first_sync_done_, 1);
+    maybe_enable_rtc_log_timestamp();
+    log_.info("[time] external rtc is healthy, stop time sync service");
+    atomic_set(&stop_requested_, 1);
+    return;
+  }
+
+  if (last_external_rtc_healthy_) {
+    log_.error("[time] external rtc invalid, fallback to SNTP", external_ret);
+    last_external_rtc_healthy_ = false;
+  }
 
   if (!is_ipv4_ready()) {
     if (last_ipv4_ready_) {
@@ -196,16 +220,11 @@ void TimeService::print_beijing_time(time_t utc_epoch_sec) const noexcept {
 }
 
 /**
- * @brief 把北京时间写入片上 RTC。
+ * @brief 把北京时间写入 RTC（同时尝试内部与外部）。
  * @param utc_epoch_sec UTC epoch 秒。
  * @return 0 表示成功；负值表示失败。
  */
 int TimeService::write_beijing_time_to_rtc(time_t utc_epoch_sec) noexcept {
-  const struct device* rtc_dev = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(rtc));
-  if (rtc_dev == nullptr || !device_is_ready(rtc_dev)) {
-    return -ENODEV;
-  }
-
   time_t beijing_epoch_sec = utc_epoch_sec + (8 * 3600);
   struct tm beijing_tm = {};
   if (gmtime_r(&beijing_epoch_sec, &beijing_tm) == nullptr) {
@@ -224,7 +243,7 @@ int TimeService::write_beijing_time_to_rtc(time_t utc_epoch_sec) noexcept {
   rtc_tm.tm_isdst = -1;
   rtc_tm.tm_nsec = 0;
 
-  return rtc_set_time(rtc_dev, &rtc_tm);
+  return platform::rtc_set_time_best_effort(rtc_tm);
 }
 
 /**
@@ -258,6 +277,7 @@ int TimeService::run() noexcept {
   rtc_timestamp_enabled_ = false;
   atomic_set(&first_sync_done_, 0);
   last_ipv4_ready_ = false;
+  last_external_rtc_healthy_ = false;
 
   thread_id_ = k_thread_create(&thread_, stack_, K_THREAD_STACK_SIZEOF(stack_), threadEntry, this,
                                nullptr, nullptr, kPriority, 0, K_NO_WAIT);
