@@ -1,0 +1,16 @@
+* text=auto eol=lf
+
+# Windows native shell scripts
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Keep binaries untouched
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.bin binary
+*.hex binary
+*.elf binary
+*.a binary
+*.lib binary

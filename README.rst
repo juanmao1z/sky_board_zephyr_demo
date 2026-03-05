@@ -43,23 +43,53 @@ SD 卡和传感器等多个服务.
 ==========
 
 推荐命令以 `docs/codex-runbook.md` 为准.
+脚本使用说明见 `docs/构建脚本使用说明.md`.
 
-快速构建:
+一劳永逸建议
+============
+
+- 仓库内已提供跨平台构建脚本:
+  - Linux/macOS: `scripts/build.sh`
+  - Windows PowerShell: `scripts/build.ps1`
+- 建议统一使用脚本入口, 避免硬编码 `d:\...` 路径.
+- 仓库提供 `.gitattributes`, 默认统一文本文件为 LF, 降低 Windows/Linux 混合开发的行尾冲突.
+
+
+快速构建
+========
+
+Linux/macOS:
+
+.. code-block:: bash
+
+  source <zephyr-workspace>/.venv/bin/activate
+  cd <zephyr-workspace>/myproject/sky_board_zephyr_demo
+  ./scripts/build.sh
+
+Windows PowerShell:
 
 .. code-block:: powershell
 
-  d:\zephyrproject\.venv\Scripts\west.exe build `
-    -b lckfb_sky_board_stm32f407 `
-    d:/zephyrproject/myproject/sky_board_zephyr_demo `
-    -d d:/zephyrproject/myproject/sky_board_zephyr_demo/build/lckfb_sky_board_stm32f407 `
-    -p auto
+  # 在 Zephyr venv 已激活的 PowerShell 中执行
+  .\scripts\build.ps1
 
-快速烧录:
+可选参数示例:
+
+.. code-block:: bash
+
+  BOARD=lckfb_sky_board_stm32f407 PRISTINE=always ./scripts/build.sh
 
 .. code-block:: powershell
 
-  d:\zephyrproject\.venv\Scripts\west.exe flash `
-    -d d:/zephyrproject/myproject/sky_board_zephyr_demo/build/lckfb_sky_board_stm32f407
+  .\scripts\build.ps1 -Board lckfb_sky_board_stm32f407 -Pristine always
+
+
+快速烧录
+========
+
+.. code-block:: bash
+
+  west flash -d build/lckfb_sky_board_stm32f407
 
 
 关键日志
@@ -114,4 +144,3 @@ Markdown 文档规范:
 
 - 板级 DTS 在 Zephyr 板仓库与项目板级目录中都可能存在, 修改硬件节点时需保持一致.
 - 推送代码前请至少执行一次构建验证.
-
