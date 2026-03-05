@@ -131,13 +131,6 @@ C++ 格式规范:
 - 使用 `.clang-format`(Google 风格)
 - 见 `docs/codex-runbook.md` 中"C++ 格式规范(Google)"章节
 
-Markdown 文档规范:
-
-- 使用 `prettier` + `markdownlint-cli2`
-- 配置文件:
-  - `.prettierrc.json`
-  - `.markdownlint.json`
-
 
 注意事项
 ========

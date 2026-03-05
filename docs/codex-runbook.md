@@ -74,7 +74,7 @@ d:\zephyrproject\.venv\Scripts\west.exe flash `
 - 当板卡、构建目录、west 路径发生变化时，第一时间更新此文件。
 - 优先保持命令可直接复制执行，不写模糊路径。
 
-## 9. 文档格式化与规范（Google 风格落地）
+## 9. 文档规范
 
 ### 9.0 文档标点规则
 
@@ -91,39 +91,12 @@ rg -n "[，。；：、“”‘’（）【】《》？！、]" docs README.rst
 
 若命中结果非空，则需要先修正文档标点后再提交。
 
-### 9.1 首次安装工具
+### 9.1 提交前文档自检（无需 npm）
 
 ```powershell
 cd d:/zephyrproject/myproject/sky_board_zephyr_demo
-npm install
+rg -n "[，。；：、“”‘’（）【】《》？！、]" docs README.rst *.md
 ```
-
-### 9.2 自动格式化文档
-
-```powershell
-cd d:/zephyrproject/myproject/sky_board_zephyr_demo
-npm run docs:format
-```
-
-### 9.3 规范检查
-
-```powershell
-cd d:/zephyrproject/myproject/sky_board_zephyr_demo
-npm run docs:lint
-```
-
-### 9.4 提交前检查（推荐）
-
-```powershell
-cd d:/zephyrproject/myproject/sky_board_zephyr_demo
-npm run docs:check
-```
-
-### 9.5 已配置文件
-
-- `package.json`: 文档格式化/检查脚本
-- `.prettierrc.json`: Markdown 自动换行与宽度规则
-- `.markdownlint.json`: markdownlint 规则（含 `MD029: one`）
 
 ## 10. C++ 格式规范（Google）
 
@@ -190,15 +163,11 @@ Get-ChildItem app,include,subsys,tests -Recurse -Include *.cpp,*.hpp -File | `
 ```
 
 ```text
-按 docs/codex-runbook.md 执行文档格式化与 lint（docs:format + docs:lint）
-```
-
-```text
 按 docs/cpp-comment-standard.md 规范化本次改动涉及的 C++ 注释, 然后 build 验证
 ```
 
 ```text
-按 docs/codex-runbook.md 检查文档是否含中文全角标点，并修复后再 lint
+按 docs/codex-runbook.md 检查文档是否含中文全角标点，并修复后再 build 验证
 ```
 
 ```text
